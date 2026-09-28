@@ -1,11 +1,14 @@
 import React from 'react';
+
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
+
+import { useTheme } from './ThemeContent';
 
 type TabKey =
   | 'home'
@@ -54,28 +57,43 @@ export default function BottomNavigation({
   activeTab,
   onTabPress,
 }: BottomNavigationProps) {
+  const { darkMode } = useTheme();
+
   return (
     <View
       style={styles.navigationWrapper}
       accessible
       accessibilityRole="tablist"
     >
-      <View style={styles.navigationBar}>
+      <View
+        style={[
+          styles.navigationBar,
+          darkMode &&
+            styles.navigationBarDark,
+        ]}
+      >
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.key;
+          const isActive =
+            activeTab === tab.key;
 
           return (
             <Pressable
               key={tab.key}
               style={styles.tabButton}
-              onPress={() => onTabPress?.(tab.key)}
+              onPress={() =>
+                onTabPress?.(tab.key)
+              }
               accessibilityRole="tab"
-              accessibilityLabel={tab.label}
+              accessibilityLabel={
+                tab.label
+              }
               accessibilityState={{
                 selected: isActive,
               }}
               android_ripple={{
-                color: '#E8E0F5',
+                color: darkMode
+                  ? '#263B46'
+                  : '#DDF3FF',
               }}
             >
               <View
@@ -83,6 +101,9 @@ export default function BottomNavigation({
                   styles.iconContainer,
                   isActive &&
                     styles.activeIconContainer,
+                  isActive &&
+                    darkMode &&
+                    styles.activeIconContainerDark,
                 ]}
               >
                 <Ionicons
@@ -94,8 +115,12 @@ export default function BottomNavigation({
                   size={25}
                   color={
                     isActive
-                      ? '#25233A'
-                      : '#555555'
+                      ? darkMode
+                        ? '#BDE7F8'
+                        : '#2876A8'
+                      : darkMode
+                        ? '#9CA3AF'
+                        : '#555555'
                   }
                 />
               </View>
@@ -133,6 +158,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
+  navigationBarDark: {
+    backgroundColor: '#111827',
+  },
+
   tabButton: {
     width: 60,
     height: 60,
@@ -150,6 +179,10 @@ const styles = StyleSheet.create({
   },
 
   activeIconContainer: {
-    backgroundColor: '#F0E6FF',
+    backgroundColor: '#DDF3FF',
+  },
+
+  activeIconContainerDark: {
+    backgroundColor: '#24485A',
   },
 });

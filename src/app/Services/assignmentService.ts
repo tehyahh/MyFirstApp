@@ -10,79 +10,127 @@ export type AssignmentData = {
   status: 'Pending' | 'In Progress' | 'Completed';
 };
 
+function dbStatus(status: AssignmentData['status']) {
+  if (status === 'In Progress') return 'in_progress';
+  if (status === 'Completed') return 'completed';
+  return 'todo';
+}
+
+function appStatus(status: string): AssignmentData['status'] {
+  if (status === 'in_progress') return 'In Progress';
+  if (status === 'completed') return 'Completed';
+  return 'Pending';
+}
+
 export async function createAssignment(
   assignment: AssignmentData
 ) {
   const db = await getDb();
 
-  await db.runAsync(
+  const result = await db.runAsync(
     `
       INSERT INTO tasks (
-        id,
-        type,
         title,
+        category,
         subject,
-        date,
+        due_date,
         priority,
-        notes,
-        status
+        status,
+        progress,
+        notes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'assignment', ?, ?, ?, ?, 0, ?)
     `,
     [
-      assignment.id,
-      'assignment',
       assignment.title,
       assignment.subject,
       assignment.dueDate,
       assignment.priority,
+      dbStatus(assignment.status),
       assignment.notes,
-      assignment.status,
     ],
   );
+
+  return String(result.lastInsertRowId);
 }
 
 export async function getAssignments() {
   const db = await getDb();
 
-  return await db.getAllAsync<AssignmentData>(
+  const rows = await db.getAllAsync<{
+    id: number;
+    title: string;
+    subject: string;
+    due_date: string;
+    priority: 'Low' | 'Medium' | 'High';
+    notes: string;
+    status: string;
+  }>(
     `
       SELECT
         id,
         title,
         subject,
-        date AS dueDate,
+        due_date,
         priority,
         notes,
         status
       FROM tasks
-      WHERE type = 'assignment'
-      ORDER BY date ASC
+      WHERE category = 'assignment'
+      ORDER BY due_date ASC
     `,
   );
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    title: row.title,
+    subject: row.subject || '',
+    dueDate: row.due_date || '',
+    priority: row.priority,
+    notes: row.notes || '',
+    status: appStatus(row.status),
+  }));
 }
 
-export async function getAssignmentById(
-  id: string
-) {
+export async function getAssignmentById(id: string) {
   const db = await getDb();
 
-  return await db.getFirstAsync<AssignmentData>(
+  const row = await db.getFirstAsync<{
+    id: number;
+    title: string;
+    subject: string;
+    due_date: string;
+    priority: 'Low' | 'Medium' | 'High';
+    notes: string;
+    status: string;
+  }>(
     `
       SELECT
         id,
         title,
         subject,
-        date AS dueDate,
+        due_date,
         priority,
         notes,
         status
       FROM tasks
       WHERE id = ?
-        AND type = 'assignment'
+        AND category = 'assignment'
     `,
-    [id],
+    [Number(id)],
   );
+
+  if (!row) return null;
+
+  return {
+    id: String(row.id),
+    title: row.title,
+    subject: row.subject || '',
+    dueDate: row.due_date || '',
+    priority: row.priority,
+    notes: row.notes || '',
+    status: appStatus(row.status),
+  };
 }
 
 export async function updateAssignment(
@@ -96,12 +144,12 @@ export async function updateAssignment(
       SET
         title = ?,
         subject = ?,
-        date = ?,
+        due_date = ?,
         priority = ?,
         notes = ?,
         status = ?
       WHERE id = ?
-        AND type = 'assignment'
+        AND category = 'assignment'
     `,
     [
       assignment.title,
@@ -109,8 +157,8 @@ export async function updateAssignment(
       assignment.dueDate,
       assignment.priority,
       assignment.notes,
-      assignment.status,
-      assignment.id,
+      dbStatus(assignment.status),
+      Number(assignment.id),
     ],
   );
 }
@@ -126,23 +174,21 @@ export async function updateAssignmentStatus(
       UPDATE tasks
       SET status = ?
       WHERE id = ?
-        AND type = 'assignment'
+        AND category = 'assignment'
     `,
-    [status, id],
+    [dbStatus(status), Number(id)],
   );
 }
 
-export async function deleteAssignment(
-  id: string
-) {
+export async function deleteAssignment(id: string) {
   const db = await getDb();
 
   await db.runAsync(
     `
       DELETE FROM tasks
       WHERE id = ?
-        AND type = 'assignment'
+        AND category = 'assignment'
     `,
-    [id],
+    [Number(id)],
   );
 }

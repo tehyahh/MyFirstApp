@@ -10,75 +10,118 @@ export type GoalData = {
   status: 'Active' | 'Paused' | 'Completed';
 };
 
+function dbStatus(status: GoalData['status']) {
+  if (status === 'Completed') return 'completed';
+  if (status === 'Paused') return 'in_progress';
+  return 'todo';
+}
+
+function appStatus(status: string): GoalData['status'] {
+  if (status === 'completed') return 'Completed';
+  if (status === 'in_progress') return 'Paused';
+  return 'Active';
+}
+
 export async function createGoal(goal: GoalData) {
   const db = await getDb();
 
-  await db.runAsync(
+  const result = await db.runAsync(
     `
       INSERT INTO tasks (
-        id,
-        type,
         title,
         category,
-        description,
-        date,
+        due_date,
         progress,
-        status
+        status,
+        notes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'goal', ?, ?, ?, ?)
     `,
     [
-      goal.id,
-      'goal',
       goal.title,
-      goal.category,
-      goal.description,
       goal.targetDate,
       goal.progress,
-      goal.status,
+      dbStatus(goal.status),
+      goal.description,
     ],
   );
+
+  return String(result.lastInsertRowId);
 }
 
 export async function getGoals() {
   const db = await getDb();
 
-  return await db.getAllAsync<GoalData>(
+  const rows = await db.getAllAsync<{
+    id: number;
+    title: string;
+    due_date: string;
+    progress: number;
+    status: string;
+    notes: string;
+  }>(
     `
       SELECT
         id,
         title,
-        category,
-        description,
-        date AS targetDate,
+        due_date,
         progress,
-        status
+        status,
+        notes
       FROM tasks
-      WHERE type = 'goal'
-      ORDER BY date ASC
+      WHERE category = 'goal'
+      ORDER BY due_date ASC
     `,
   );
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    title: row.title,
+    category: 'Goal',
+    description: row.notes || '',
+    targetDate: row.due_date || '',
+    progress: Number(row.progress || 0),
+    status: appStatus(row.status),
+  }));
 }
 
 export async function getGoalById(id: string) {
   const db = await getDb();
 
-  return await db.getFirstAsync<GoalData>(
+  const row = await db.getFirstAsync<{
+    id: number;
+    title: string;
+    due_date: string;
+    progress: number;
+    status: string;
+    notes: string;
+  }>(
     `
       SELECT
         id,
         title,
-        category,
-        description,
-        date AS targetDate,
+        due_date,
         progress,
-        status
+        status,
+        notes
       FROM tasks
       WHERE id = ?
-        AND type = 'goal'
+        AND category = 'goal'
     `,
-    [id],
+    [Number(id)],
   );
+
+  if (!row) return null;
+
+  return {
+    id: String(row.id),
+    title: row.title,
+    category: 'Goal',
+    description: row.notes || '',
+    targetDate: row.due_date || '',
+    progress: Number(row.progress || 0),
+    status: appStatus(row.status),
+  };
 }
 
 export async function updateGoal(goal: GoalData) {
@@ -89,22 +132,20 @@ export async function updateGoal(goal: GoalData) {
       UPDATE tasks
       SET
         title = ?,
-        category = ?,
-        description = ?,
-        date = ?,
+        due_date = ?,
         progress = ?,
-        status = ?
+        status = ?,
+        notes = ?
       WHERE id = ?
-        AND type = 'goal'
+        AND category = 'goal'
     `,
     [
       goal.title,
-      goal.category,
-      goal.description,
       goal.targetDate,
       goal.progress,
-      goal.status,
-      goal.id,
+      dbStatus(goal.status),
+      goal.description,
+      Number(goal.id),
     ],
   );
 }
@@ -120,9 +161,9 @@ export async function updateGoalProgress(
       UPDATE tasks
       SET progress = ?
       WHERE id = ?
-        AND type = 'goal'
+        AND category = 'goal'
     `,
-    [progress, id],
+    [progress, Number(id)],
   );
 }
 
@@ -137,9 +178,9 @@ export async function updateGoalStatus(
       UPDATE tasks
       SET status = ?
       WHERE id = ?
-        AND type = 'goal'
+        AND category = 'goal'
     `,
-    [status, id],
+    [dbStatus(status), Number(id)],
   );
 }
 
@@ -150,8 +191,8 @@ export async function deleteGoal(id: string) {
     `
       DELETE FROM tasks
       WHERE id = ?
-        AND type = 'goal'
+        AND category = 'goal'
     `,
-    [id],
+    [Number(id)],
   );
 }

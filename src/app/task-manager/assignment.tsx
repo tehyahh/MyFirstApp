@@ -28,6 +28,8 @@ import {
 
 import { initializeDatabase } from '../../database/db';
 
+import { useTheme } from '../../components/ThemeContent';
+
 type Priority = 'Low' | 'Medium' | 'High';
 type Status = 'Pending' | 'In Progress' | 'Completed';
 type Filter = 'Today' | 'Scheduled' | 'Important' | 'Completed';
@@ -104,6 +106,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 export default function AssignmentScreen() {
   const router = useRouter();
+  const { darkMode } = useTheme();
 
   const today = new Date();
   const todayString = formatDate(today);
@@ -111,23 +114,23 @@ export default function AssignmentScreen() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
   useEffect(() => {
-  const loadAssignments = async () => {
-    try {
-      await initializeDatabase();
+    const loadAssignments = async () => {
+      try {
+        await initializeDatabase();
 
-      const data = await getAssignments();
+        const data = await getAssignments();
 
-      setAssignments(data);
-    } catch (error) {
-      console.error(
-        'Failed to load assignments:',
-        error
-      );
-    }
-  };
+        setAssignments(data);
+      } catch (error) {
+        console.error(
+          'Failed to load assignments:',
+          error
+        );
+      }
+    };
 
-  loadAssignments();
-}, []);
+    loadAssignments();
+  }, []);
 
   /*
    * ============================================================
@@ -170,12 +173,8 @@ export default function AssignmentScreen() {
    * ============================================================
    * MENU STATE
    * ============================================================
-   *
-   * Instead of putting the menu directly inside the card,
-   * we use a Modal.
-   *
-   * This makes the three-dot menu reliable on Android.
    */
+
   const [menuAssignment, setMenuAssignment] =
     useState<Assignment | null>(null);
 
@@ -243,63 +242,63 @@ export default function AssignmentScreen() {
    * ============================================================
    */
 
-const saveAssignment = async () => {
-  if (!title.trim()) return;
+  const saveAssignment = async () => {
+    if (!title.trim()) return;
 
-  try {
-    if (editingAssignment) {
-      const updatedAssignment: Assignment = {
-        ...editingAssignment,
-        title: title.trim(),
-        subject:
-          subject.trim() || 'General',
-        dueDate,
-        priority,
-        notes: notes.trim(),
-      };
+    try {
+      if (editingAssignment) {
+        const updatedAssignment: Assignment = {
+          ...editingAssignment,
+          title: title.trim(),
+          subject:
+            subject.trim() || 'General',
+          dueDate,
+          priority,
+          notes: notes.trim(),
+        };
 
-      await updateAssignment(
-        updatedAssignment
+        await updateAssignment(
+          updatedAssignment
+        );
+
+        setAssignments((current) =>
+          current.map((assignment) =>
+            assignment.id ===
+            editingAssignment.id
+              ? updatedAssignment
+              : assignment
+          )
+        );
+      } else {
+        const newAssignment: Assignment = {
+          id: Date.now().toString(),
+          title: title.trim(),
+          subject:
+            subject.trim() || 'General',
+          dueDate,
+          priority,
+          notes: notes.trim(),
+          status: 'Pending',
+        };
+
+        await createAssignment(
+          newAssignment
+        );
+
+        setAssignments((current) => [
+          newAssignment,
+          ...current,
+        ]);
+      }
+
+      closeForm();
+    } catch (error) {
+      console.error(
+        'Failed to save assignment:',
+        error
       );
-
-      setAssignments((current) =>
-        current.map((assignment) =>
-          assignment.id ===
-          editingAssignment.id
-            ? updatedAssignment
-            : assignment
-        )
-      );
-    } else {
-      const newAssignment: Assignment = {
-        id: Date.now().toString(),
-        title: title.trim(),
-        subject:
-          subject.trim() || 'General',
-        dueDate,
-        priority,
-        notes: notes.trim(),
-        status: 'Pending',
-      };
-
-      await createAssignment(
-        newAssignment
-      );
-
-      setAssignments((current) => [
-        newAssignment,
-        ...current,
-      ]);
     }
-
-    closeForm();
-  } catch (error) {
-    console.error(
-      'Failed to save assignment:',
-      error
-    );
-  }
-};
+  };
 
   /*
    * ============================================================
@@ -307,35 +306,35 @@ const saveAssignment = async () => {
    * ============================================================
    */
 
-const updateStatus = async (
-  id: string,
-  status: Status
-) => {
-  try {
-    await updateAssignmentStatus(
-      id,
-      status
-    );
+  const updateStatus = async (
+    id: string,
+    status: Status
+  ) => {
+    try {
+      await updateAssignmentStatus(
+        id,
+        status
+      );
 
-    setAssignments((current) =>
-      current.map((assignment) =>
-        assignment.id === id
-          ? {
-              ...assignment,
-              status,
-            }
-          : assignment
-      )
-    );
+      setAssignments((current) =>
+        current.map((assignment) =>
+          assignment.id === id
+            ? {
+                ...assignment,
+                status,
+              }
+            : assignment
+        )
+      );
 
-    setMenuAssignment(null);
-  } catch (error) {
-    console.error(
-      'Failed to update assignment status:',
-      error
-    );
-  }
-};
+      setMenuAssignment(null);
+    } catch (error) {
+      console.error(
+        'Failed to update assignment status:',
+        error
+      );
+    }
+  };
 
   /*
    * ============================================================
@@ -343,27 +342,28 @@ const updateStatus = async (
    * ============================================================
    */
 
-const deleteAssignment = async (
-  id: string
-) => {
-  try {
-    await deleteAssignmentFromDb(id);
+  const deleteAssignment = async (
+    id: string
+  ) => {
+    try {
+      await deleteAssignmentFromDb(id);
 
-    setAssignments((current) =>
-      current.filter(
-        (assignment) =>
-          assignment.id !== id
-      )
-    );
+      setAssignments((current) =>
+        current.filter(
+          (assignment) =>
+            assignment.id !== id
+        )
+      );
 
-    setMenuAssignment(null);
-  } catch (error) {
-    console.error(
-      'Failed to delete assignment:',
-      error
-    );
-  }
-};
+      setMenuAssignment(null);
+    } catch (error) {
+      console.error(
+        'Failed to delete assignment:',
+        error
+      );
+    }
+  };
+
   /*
    * ============================================================
    * THREE-DOT MENU
@@ -415,17 +415,9 @@ const deleteAssignment = async (
   const confirmDate = () => {
     if (!selectedDate) return;
 
-    /*
-     * If the form is open,
-     * we're selecting an assignment due date.
-     */
     if (formVisible) {
       setDueDate(selectedDate);
     } else {
-      /*
-       * Otherwise we're browsing assignments
-       * by date.
-       */
       setSelectedCalendarDate(selectedDate);
     }
 
@@ -483,8 +475,7 @@ const deleteAssignment = async (
         calendarMonth
       );
 
-    const days: Array<number | null> =
-      [];
+    const days: Array<number | null> = [];
 
     for (
       let i = 0;
@@ -556,11 +547,6 @@ const deleteAssignment = async (
 
   const filteredAssignments =
     useMemo(() => {
-      /*
-       * SEARCH
-       *
-       * Searches EVERYTHING.
-       */
       if (searchText.trim()) {
         const search =
           searchText
@@ -581,12 +567,6 @@ const deleteAssignment = async (
         );
       }
 
-      /*
-       * CALENDAR MODE
-       *
-       * Shows ALL assignments on
-       * selected date, including completed.
-       */
       if (selectedCalendarDate) {
         return assignments.filter(
           (assignment) =>
@@ -594,10 +574,6 @@ const deleteAssignment = async (
             selectedCalendarDate
         );
       }
-
-      /*
-       * NORMAL FILTERS
-       */
 
       if (activeFilter === 'Today') {
         return assignments.filter(
@@ -693,21 +669,37 @@ const deleteAssignment = async (
 
   return (
     <SafeAreaView
-      style={styles.safeArea}
+      style={[
+        styles.safeArea,
+        darkMode && styles.safeAreaDark,
+      ]}
     >
-      <View style={styles.screen}>
+      <View
+        style={[
+          styles.screen,
+          darkMode && styles.screenDark,
+        ]}
+      >
 
-        {/* ====================================================
-            HEADER
-        ==================================================== */}
+        {/* HEADER */}
 
         <View style={styles.header}>
 
           <Pressable
             onPress={() => router.back()}
-            style={styles.iconButton}
+            style={[
+              styles.iconButton,
+              darkMode &&
+                styles.iconButtonDark,
+            ]}
           >
-            <Text style={styles.backIcon}>
+            <Text
+              style={[
+                styles.backIcon,
+                darkMode &&
+                  styles.backIconDark,
+              ]}
+            >
               ‹
             </Text>
           </Pressable>
@@ -718,15 +710,21 @@ const deleteAssignment = async (
             }
           >
             <Text
-              style={styles.headerTitle}
+              style={[
+                styles.headerTitle,
+                darkMode &&
+                  styles.headerTitleDark,
+              ]}
             >
               Assignments
             </Text>
 
             <Text
-              style={
-                styles.headerSubtitle
-              }
+              style={[
+                styles.headerSubtitle,
+                darkMode &&
+                  styles.headerSubtitleDark,
+              ]}
             >
               Stay on top of your school
               work.
@@ -752,14 +750,21 @@ const deleteAssignment = async (
               }}
               style={[
                 styles.iconButton,
+                darkMode &&
+                  styles.iconButtonDark,
                 searchVisible &&
                   styles.iconButtonActive,
+                searchVisible &&
+                  darkMode &&
+                  styles.iconButtonActiveDark,
               ]}
             >
               <Text
-                style={
-                  styles.headerIcon
-                }
+                style={[
+                  styles.headerIcon,
+                  darkMode &&
+                    styles.headerIconDark,
+                ]}
               >
                 ⌕
               </Text>
@@ -773,14 +778,21 @@ const deleteAssignment = async (
               }
               style={[
                 styles.iconButton,
+                darkMode &&
+                  styles.iconButtonDark,
                 selectedCalendarDate &&
                   styles.iconButtonActive,
+                selectedCalendarDate &&
+                  darkMode &&
+                  styles.iconButtonActiveDark,
               ]}
             >
               <Text
-                style={
-                  styles.headerIcon
-                }
+                style={[
+                  styles.headerIcon,
+                  darkMode &&
+                    styles.headerIconDark,
+                ]}
               >
                 □
               </Text>
@@ -789,21 +801,23 @@ const deleteAssignment = async (
           </View>
         </View>
 
-        {/* ====================================================
-            SEARCH BAR
-        ==================================================== */}
+        {/* SEARCH BAR */}
 
         {searchVisible && (
           <View
-            style={
-              styles.searchContainer
-            }
+            style={[
+              styles.searchContainer,
+              darkMode &&
+                styles.searchContainerDark,
+            ]}
           >
 
             <Text
-              style={
-                styles.searchIcon
-              }
+              style={[
+                styles.searchIcon,
+                darkMode &&
+                  styles.searchIconDark,
+              ]}
             >
               ⌕
             </Text>
@@ -821,9 +835,11 @@ const deleteAssignment = async (
               }}
               placeholder="Search title, subject, or notes..."
               placeholderTextColor="#9CA3AF"
-              style={
-                styles.searchInput
-              }
+              style={[
+                styles.searchInput,
+                darkMode &&
+                  styles.searchInputDark,
+              ]}
               autoFocus
             />
 
@@ -847,31 +863,35 @@ const deleteAssignment = async (
           </View>
         )}
 
-        {/* ====================================================
-            DATE MODE
-        ==================================================== */}
+        {/* DATE MODE */}
 
         {selectedCalendarDate &&
           !searchText.trim() && (
             <View
-              style={
-                styles.dateModeBanner
-              }
+              style={[
+                styles.dateModeBanner,
+                darkMode &&
+                  styles.dateModeBannerDark,
+              ]}
             >
 
               <View>
                 <Text
-                  style={
-                    styles.dateModeLabel
-                  }
+                  style={[
+                    styles.dateModeLabel,
+                    darkMode &&
+                      styles.dateModeLabelDark,
+                  ]}
                 >
                   DATE VIEW
                 </Text>
 
                 <Text
-                  style={
-                    styles.dateModeText
-                  }
+                  style={[
+                    styles.dateModeText,
+                    darkMode &&
+                      styles.dateModeTextDark,
+                  ]}
                 >
                   {displayDate(
                     selectedCalendarDate
@@ -885,14 +905,18 @@ const deleteAssignment = async (
                     null
                   )
                 }
-                style={
-                  styles.clearDateModeButton
-                }
+                style={[
+                  styles.clearDateModeButton,
+                  darkMode &&
+                    styles.clearDateModeButtonDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.clearDateModeButtonText
-                  }
+                  style={[
+                    styles.clearDateModeButtonText,
+                    darkMode &&
+                      styles.clearDateModeButtonTextDark,
+                  ]}
                 >
                   Clear
                 </Text>
@@ -901,9 +925,7 @@ const deleteAssignment = async (
             </View>
           )}
 
-        {/* ====================================================
-            FILTERS
-        ==================================================== */}
+        {/* FILTERS */}
 
         {!searchText.trim() &&
           !selectedCalendarDate && (
@@ -994,9 +1016,7 @@ const deleteAssignment = async (
             </View>
           )}
 
-        {/* ====================================================
-            SECTION HEADER
-        ==================================================== */}
+        {/* SECTION HEADER */}
 
         <View
           style={
@@ -1015,22 +1035,28 @@ const deleteAssignment = async (
             >
 
               <Text
-                style={
-                  styles.sectionTitle
-                }
+                style={[
+                  styles.sectionTitle,
+                  darkMode &&
+                    styles.sectionTitleDark,
+                ]}
               >
                 {screenTitle}
               </Text>
 
               <View
-                style={
-                  styles.sectionCount
-                }
+                style={[
+                  styles.sectionCount,
+                  darkMode &&
+                    styles.sectionCountDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.sectionCountText
-                  }
+                  style={[
+                    styles.sectionCountText,
+                    darkMode &&
+                      styles.sectionCountTextDark,
+                  ]}
                 >
                   {
                     filteredAssignments.length
@@ -1041,9 +1067,11 @@ const deleteAssignment = async (
             </View>
 
             <Text
-              style={
-                styles.sectionSubtitle
-              }
+              style={[
+                styles.sectionSubtitle,
+                darkMode &&
+                  styles.sectionSubtitleDark,
+              ]}
             >
               {screenSubtitle}
             </Text>
@@ -1054,14 +1082,18 @@ const deleteAssignment = async (
             onPress={
               openNewAssignment
             }
-            style={
-              styles.addTopButton
-            }
+            style={[
+              styles.addTopButton,
+              darkMode &&
+                styles.addTopButtonDark,
+            ]}
           >
             <Text
-              style={
-                styles.addTopButtonText
-              }
+              style={[
+                styles.addTopButtonText,
+                darkMode &&
+                  styles.addTopButtonTextDark,
+              ]}
             >
               + Add
             </Text>
@@ -1069,9 +1101,7 @@ const deleteAssignment = async (
 
         </View>
 
-        {/* ====================================================
-            ASSIGNMENT LIST
-        ==================================================== */}
+        {/* ASSIGNMENT LIST */}
 
         <ScrollView
           style={styles.list}
@@ -1096,23 +1126,29 @@ const deleteAssignment = async (
             >
 
               <View
-                style={
-                  styles.emptyIcon
-                }
+                style={[
+                  styles.emptyIcon,
+                  darkMode &&
+                    styles.emptyIconDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.emptyIconText
-                  }
+                  style={[
+                    styles.emptyIconText,
+                    darkMode &&
+                      styles.emptyIconTextDark,
+                  ]}
                 >
                   ✓
                 </Text>
               </View>
 
               <Text
-                style={
-                  styles.emptyTitle
-                }
+                style={[
+                  styles.emptyTitle,
+                  darkMode &&
+                    styles.emptyTitleDark,
+                ]}
               >
                 {searchText.trim()
                   ? 'Nothing found'
@@ -1122,9 +1158,11 @@ const deleteAssignment = async (
               </Text>
 
               <Text
-                style={
-                  styles.emptyDescription
-                }
+                style={[
+                  styles.emptyDescription,
+                  darkMode &&
+                    styles.emptyDescriptionDark,
+                ]}
               >
                 {searchText.trim()
                   ? 'Try another title, subject, or keyword.'
@@ -1139,14 +1177,18 @@ const deleteAssignment = async (
                     onPress={
                       openNewAssignment
                     }
-                    style={
-                      styles.emptyButton
-                    }
+                    style={[
+                      styles.emptyButton,
+                      darkMode &&
+                        styles.emptyButtonDark,
+                    ]}
                   >
                     <Text
-                      style={
-                        styles.emptyButtonText
-                      }
+                      style={[
+                        styles.emptyButtonText,
+                        darkMode &&
+                          styles.emptyButtonTextDark,
+                      ]}
                     >
                       + Add Assignment
                     </Text>
@@ -1179,9 +1221,7 @@ const deleteAssignment = async (
 
         </ScrollView>
 
-        {/* ====================================================
-            FLOATING ADD BUTTON
-        ==================================================== */}
+        {/* FLOATING ADD BUTTON */}
 
         <Pressable
           onPress={
@@ -1189,22 +1229,24 @@ const deleteAssignment = async (
           }
           style={({ pressed }) => [
             styles.floatingButton,
+            darkMode &&
+              styles.floatingButtonDark,
             pressed &&
               styles.floatingButtonPressed,
           ]}
         >
           <Text
-            style={
-              styles.floatingButtonText
-            }
+            style={[
+              styles.floatingButtonText,
+              darkMode &&
+                styles.floatingButtonTextDark,
+            ]}
           >
             +
           </Text>
         </Pressable>
 
-        {/* ====================================================
-            THREE-DOT MENU MODAL
-        ==================================================== */}
+        {/* THREE-DOT MENU MODAL */}
 
         <Modal
           visible={
@@ -1227,18 +1269,22 @@ const deleteAssignment = async (
           >
 
             <Pressable
-              style={
-                styles.menuCard
-              }
+              style={[
+                styles.menuCard,
+                darkMode &&
+                  styles.menuCardDark,
+              ]}
               onPress={(event) =>
                 event.stopPropagation()
               }
             >
 
               <Text
-                style={
-                  styles.menuTitle
-                }
+                style={[
+                  styles.menuTitle,
+                  darkMode &&
+                    styles.menuTitleDark,
+                ]}
               >
                 Assignment Options
               </Text>
@@ -1246,9 +1292,11 @@ const deleteAssignment = async (
               {menuAssignment && (
                 <Text
                   numberOfLines={1}
-                  style={
-                    styles.menuAssignmentTitle
-                  }
+                  style={[
+                    styles.menuAssignmentTitle,
+                    darkMode &&
+                      styles.menuAssignmentTitleDark,
+                  ]}
                 >
                   {menuAssignment.title}
                 </Text>
@@ -1272,14 +1320,18 @@ const deleteAssignment = async (
               >
 
                 <View
-                  style={
-                    styles.menuItemIcon
-                  }
+                  style={[
+                    styles.menuItemIcon,
+                    darkMode &&
+                      styles.menuItemIconDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.menuItemIconText
-                    }
+                    style={[
+                      styles.menuItemIconText,
+                      darkMode &&
+                        styles.menuItemIconTextDark,
+                    ]}
                   >
                     ✎
                   </Text>
@@ -1291,17 +1343,21 @@ const deleteAssignment = async (
                   }
                 >
                   <Text
-                    style={
-                      styles.menuItemTitle
-                    }
+                    style={[
+                      styles.menuItemTitle,
+                      darkMode &&
+                        styles.menuItemTitleDark,
+                    ]}
                   >
                     Edit Assignment
                   </Text>
 
                   <Text
-                    style={
-                      styles.menuItemSubtitle
-                    }
+                    style={[
+                      styles.menuItemSubtitle,
+                      darkMode &&
+                        styles.menuItemSubtitleDark,
+                    ]}
                   >
                     Change title, date, priority,
                     or notes
@@ -1335,6 +1391,8 @@ const deleteAssignment = async (
                       style={[
                         styles.menuItemIcon,
                         styles.doneMenuIcon,
+                        darkMode &&
+                          styles.doneMenuIconDark,
                       ]}
                     >
                       <Text
@@ -1352,17 +1410,21 @@ const deleteAssignment = async (
                       }
                     >
                       <Text
-                        style={
-                          styles.menuItemTitle
-                        }
+                        style={[
+                          styles.menuItemTitle,
+                          darkMode &&
+                            styles.menuItemTitleDark,
+                        ]}
                       >
                         Mark as Done
                       </Text>
 
                       <Text
-                        style={
-                          styles.menuItemSubtitle
-                        }
+                        style={[
+                          styles.menuItemSubtitle,
+                          darkMode &&
+                            styles.menuItemSubtitleDark,
+                        ]}
                       >
                         Move this assignment to
                         Completed
@@ -1419,9 +1481,11 @@ const deleteAssignment = async (
                   </Text>
 
                   <Text
-                    style={
-                      styles.menuItemSubtitle
-                    }
+                    style={[
+                      styles.menuItemSubtitle,
+                      darkMode &&
+                        styles.menuItemSubtitleDark,
+                    ]}
                   >
                     Permanently remove this
                     assignment
@@ -1436,14 +1500,18 @@ const deleteAssignment = async (
                 onPress={
                   closeAssignmentMenu
                 }
-                style={
-                  styles.menuCancelButton
-                }
+                style={[
+                  styles.menuCancelButton,
+                  darkMode &&
+                    styles.menuCancelButtonDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.menuCancelText
-                  }
+                  style={[
+                    styles.menuCancelText,
+                    darkMode &&
+                      styles.menuCancelTextDark,
+                  ]}
                 >
                   Cancel
                 </Text>
@@ -1455,9 +1523,7 @@ const deleteAssignment = async (
 
         </Modal>
 
-        {/* ====================================================
-            ADD / EDIT FORM
-        ==================================================== */}
+        {/* ADD / EDIT FORM */}
 
         <Modal
           visible={formVisible}
@@ -1480,9 +1546,11 @@ const deleteAssignment = async (
           >
 
             <View
-              style={
-                styles.modalCard
-              }
+              style={[
+                styles.modalCard,
+                darkMode &&
+                  styles.modalCardDark,
+              ]}
             >
 
               <ScrollView
@@ -1502,9 +1570,11 @@ const deleteAssignment = async (
                     style={{ flex: 1 }}
                   >
                     <Text
-                      style={
-                        styles.modalTitle
-                      }
+                      style={[
+                        styles.modalTitle,
+                        darkMode &&
+                          styles.modalTitleDark,
+                      ]}
                     >
                       {editingAssignment
                         ? 'Edit Assignment'
@@ -1512,9 +1582,11 @@ const deleteAssignment = async (
                     </Text>
 
                     <Text
-                      style={
-                        styles.modalSubtitle
-                      }
+                      style={[
+                        styles.modalSubtitle,
+                        darkMode &&
+                          styles.modalSubtitleDark,
+                      ]}
                     >
                       {editingAssignment
                         ? 'Update your assignment details.'
@@ -1526,14 +1598,18 @@ const deleteAssignment = async (
                     onPress={
                       closeForm
                     }
-                    style={
-                      styles.closeButton
-                    }
+                    style={[
+                      styles.closeButton,
+                      darkMode &&
+                        styles.closeButtonDark,
+                    ]}
                   >
                     <Text
-                      style={
-                        styles.closeText
-                      }
+                      style={[
+                        styles.closeText,
+                        darkMode &&
+                          styles.closeTextDark,
+                      ]}
                     >
                       ×
                     </Text>
@@ -1544,9 +1620,11 @@ const deleteAssignment = async (
                 {/* TITLE */}
 
                 <Text
-                  style={
-                    styles.inputLabel
-                  }
+                  style={[
+                    styles.inputLabel,
+                    darkMode &&
+                      styles.inputLabelDark,
+                  ]}
                 >
                   Title
                 </Text>
@@ -1558,9 +1636,11 @@ const deleteAssignment = async (
                   }
                   placeholder="e.g. Calculus problem set 4"
                   placeholderTextColor="#9CA3AF"
-                  style={
-                    styles.input
-                  }
+                  style={[
+                    styles.input,
+                    darkMode &&
+                      styles.inputDark,
+                  ]}
                 />
 
                 {/* SUBJECT + DATE */}
@@ -1578,9 +1658,11 @@ const deleteAssignment = async (
                   >
 
                     <Text
-                      style={
-                        styles.inputLabel
-                      }
+                      style={[
+                        styles.inputLabel,
+                        darkMode &&
+                          styles.inputLabelDark,
+                      ]}
                     >
                       Subject
                     </Text>
@@ -1594,9 +1676,11 @@ const deleteAssignment = async (
                       }
                       placeholder="General"
                       placeholderTextColor="#9CA3AF"
-                      style={
-                        styles.input
-                      }
+                      style={[
+                        styles.input,
+                        darkMode &&
+                          styles.inputDark,
+                      ]}
                     />
 
                   </View>
@@ -1608,9 +1692,11 @@ const deleteAssignment = async (
                   >
 
                     <Text
-                      style={
-                        styles.inputLabel
-                      }
+                      style={[
+                        styles.inputLabel,
+                        darkMode &&
+                          styles.inputLabelDark,
+                      ]}
                     >
                       Due Date
                     </Text>
@@ -1619,14 +1705,18 @@ const deleteAssignment = async (
                       onPress={
                         openDatePicker
                       }
-                      style={
-                        styles.dateInput
-                      }
+                      style={[
+                        styles.dateInput,
+                        darkMode &&
+                          styles.dateInputDark,
+                      ]}
                     >
 
                       <Text
                         style={[
                           styles.dateInputText,
+                          darkMode &&
+                            styles.dateInputTextDark,
                           !dueDate &&
                             styles.placeholderText,
                         ]}
@@ -1655,9 +1745,11 @@ const deleteAssignment = async (
                 {/* PRIORITY */}
 
                 <Text
-                  style={
-                    styles.inputLabel
-                  }
+                  style={[
+                    styles.inputLabel,
+                    darkMode &&
+                      styles.inputLabelDark,
+                  ]}
                 >
                   Priority
                 </Text>
@@ -1685,18 +1777,30 @@ const deleteAssignment = async (
                         }
                         style={[
                           styles.priorityButton,
+                          darkMode &&
+                            styles.priorityButtonDark,
                           priority ===
                             item &&
                             styles.priorityButtonActive,
+                          priority ===
+                            item &&
+                            darkMode &&
+                            styles.priorityButtonActiveDark,
                         ]}
                       >
 
                         <Text
                           style={[
                             styles.priorityText,
+                            darkMode &&
+                              styles.priorityTextDark,
                             priority ===
                               item &&
                               styles.priorityTextActive,
+                            priority ===
+                              item &&
+                              darkMode &&
+                              styles.priorityTextActiveDark,
                           ]}
                         >
                           {item}
@@ -1711,9 +1815,11 @@ const deleteAssignment = async (
                 {/* NOTES */}
 
                 <Text
-                  style={
-                    styles.inputLabel
-                  }
+                  style={[
+                    styles.inputLabel,
+                    darkMode &&
+                      styles.inputLabelDark,
+                  ]}
                 >
                   Notes
                 </Text>
@@ -1728,6 +1834,8 @@ const deleteAssignment = async (
                   style={[
                     styles.input,
                     styles.notesInput,
+                    darkMode &&
+                      styles.inputDark,
                   ]}
                   multiline
                   textAlignVertical="top"
@@ -1745,14 +1853,18 @@ const deleteAssignment = async (
                     onPress={
                       closeForm
                     }
-                    style={
-                      styles.cancelButton
-                    }
+                    style={[
+                      styles.cancelButton,
+                      darkMode &&
+                        styles.cancelButtonDark,
+                    ]}
                   >
                     <Text
-                      style={
-                        styles.cancelText
-                      }
+                      style={[
+                        styles.cancelText,
+                        darkMode &&
+                          styles.cancelTextDark,
+                      ]}
                     >
                       Cancel
                     </Text>
@@ -1767,14 +1879,21 @@ const deleteAssignment = async (
                     }
                     style={[
                       styles.addButton,
+                      darkMode &&
+                        styles.addButtonDark,
                       !title.trim() &&
                         styles.addButtonDisabled,
+                      !title.trim() &&
+                        darkMode &&
+                        styles.addButtonDisabledDark,
                     ]}
                   >
                     <Text
-                      style={
-                        styles.addButtonText
-                      }
+                      style={[
+                        styles.addButtonText,
+                        darkMode &&
+                          styles.addButtonTextDark,
+                      ]}
                     >
                       {editingAssignment
                         ? 'Save Changes'
@@ -1792,9 +1911,7 @@ const deleteAssignment = async (
 
         </Modal>
 
-        {/* ====================================================
-            CALENDAR MODAL
-        ==================================================== */}
+        {/* CALENDAR MODAL */}
 
         <Modal
           visible={
@@ -1816,15 +1933,19 @@ const deleteAssignment = async (
           >
 
             <View
-              style={
-                styles.datePickerCard
-              }
+              style={[
+                styles.datePickerCard,
+                darkMode &&
+                  styles.datePickerCardDark,
+              ]}
             >
 
               <View
-                style={
-                  styles.datePickerHandle
-                }
+                style={[
+                  styles.datePickerHandle,
+                  darkMode &&
+                    styles.datePickerHandleDark,
+                ]}
               />
 
               <View
@@ -1838,9 +1959,11 @@ const deleteAssignment = async (
                 >
 
                   <Text
-                    style={
-                      styles.datePickerTitle
-                    }
+                    style={[
+                      styles.datePickerTitle,
+                      darkMode &&
+                        styles.datePickerTitleDark,
+                    ]}
                   >
                     {formVisible
                       ? 'Select Due Date'
@@ -1848,9 +1971,11 @@ const deleteAssignment = async (
                   </Text>
 
                   <Text
-                    style={
-                      styles.datePickerSubtitle
-                    }
+                    style={[
+                      styles.datePickerSubtitle,
+                      darkMode &&
+                        styles.datePickerSubtitleDark,
+                    ]}
                   >
                     {formVisible
                       ? 'Choose when this assignment is due.'
@@ -1865,14 +1990,18 @@ const deleteAssignment = async (
                       false
                     )
                   }
-                  style={
-                    styles.closeButton
-                  }
+                  style={[
+                    styles.closeButton,
+                    darkMode &&
+                      styles.closeButtonDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.closeText
-                    }
+                    style={[
+                      styles.closeText,
+                      darkMode &&
+                        styles.closeTextDark,
+                    ]}
                   >
                     ×
                   </Text>
@@ -1892,23 +2021,29 @@ const deleteAssignment = async (
                   onPress={
                     goToPreviousMonth
                   }
-                  style={
-                    styles.monthArrow
-                  }
+                  style={[
+                    styles.monthArrow,
+                    darkMode &&
+                      styles.monthArrowDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.monthArrowText
-                    }
+                    style={[
+                      styles.monthArrowText,
+                      darkMode &&
+                        styles.monthArrowTextDark,
+                    ]}
                   >
                     ‹
                   </Text>
                 </Pressable>
 
                 <Text
-                  style={
-                    styles.monthTitle
-                  }
+                  style={[
+                    styles.monthTitle,
+                    darkMode &&
+                      styles.monthTitleDark,
+                  ]}
                 >
                   {
                     MONTHS[
@@ -1922,14 +2057,18 @@ const deleteAssignment = async (
                   onPress={
                     goToNextMonth
                   }
-                  style={
-                    styles.monthArrow
-                  }
+                  style={[
+                    styles.monthArrow,
+                    darkMode &&
+                      styles.monthArrowDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.monthArrowText
-                    }
+                    style={[
+                      styles.monthArrowText,
+                      darkMode &&
+                        styles.monthArrowTextDark,
+                    ]}
                   >
                     ›
                   </Text>
@@ -1949,9 +2088,11 @@ const deleteAssignment = async (
                   (day) => (
                     <Text
                       key={day}
-                      style={
-                        styles.weekdayText
-                      }
+                      style={[
+                        styles.weekdayText,
+                        darkMode &&
+                          styles.weekdayTextDark,
+                      ]}
                     >
                       {day}
                     </Text>
@@ -2028,11 +2169,17 @@ const deleteAssignment = async (
                         <Text
                           style={[
                             styles.calendarDayText,
+                            darkMode &&
+                              styles.calendarDayTextDark,
                             isSelected &&
                               styles.calendarDayTextSelected,
                             isToday &&
                               !isSelected &&
                               styles.calendarTodayText,
+                            isToday &&
+                              !isSelected &&
+                              darkMode &&
+                              styles.calendarTodayTextDark,
                           ]}
                         >
                           {day}
@@ -2057,20 +2204,26 @@ const deleteAssignment = async (
               {/* SELECTED DATE */}
 
               <View
-                style={
-                  styles.selectedDateBox
-                }
+                style={[
+                  styles.selectedDateBox,
+                  darkMode &&
+                    styles.selectedDateBoxDark,
+                ]}
               >
 
                 <View
-                  style={
-                    styles.selectedDateIcon
-                  }
+                  style={[
+                    styles.selectedDateIcon,
+                    darkMode &&
+                      styles.selectedDateIconDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.selectedDateIconText
-                    }
+                    style={[
+                      styles.selectedDateIconText,
+                      darkMode &&
+                        styles.selectedDateIconTextDark,
+                    ]}
                   >
                     □
                   </Text>
@@ -2083,17 +2236,21 @@ const deleteAssignment = async (
                 >
 
                   <Text
-                    style={
-                      styles.selectedDateLabel
-                    }
+                    style={[
+                      styles.selectedDateLabel,
+                      darkMode &&
+                        styles.selectedDateLabelDark,
+                    ]}
                   >
                     Selected date
                   </Text>
 
                   <Text
-                    style={
-                      styles.selectedDateText
-                    }
+                    style={[
+                      styles.selectedDateText,
+                      darkMode &&
+                        styles.selectedDateTextDark,
+                    ]}
                   >
                     {selectedDate
                       ? displayDate(
@@ -2118,14 +2275,18 @@ const deleteAssignment = async (
                   onPress={
                     clearSelectedDate
                   }
-                  style={
-                    styles.clearDateButton
-                  }
+                  style={[
+                    styles.clearDateButton,
+                    darkMode &&
+                      styles.clearDateButtonDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.clearDateText
-                    }
+                    style={[
+                      styles.clearDateText,
+                      darkMode &&
+                        styles.clearDateTextDark,
+                    ]}
                   >
                     Clear
                   </Text>
@@ -2142,6 +2303,9 @@ const deleteAssignment = async (
                     styles.confirmDateButton,
                     !selectedDate &&
                       styles.confirmDateDisabled,
+                    !selectedDate &&
+                      darkMode &&
+                      styles.confirmDateDisabledDark,
                   ]}
                 >
                   <Text
@@ -2185,13 +2349,20 @@ function FilterCard({
   active: boolean;
   onPress: () => void;
 }) {
+  const { darkMode } = useTheme();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.filterCard,
+        darkMode &&
+          styles.filterCardDark,
         active &&
           styles.filterCardActive,
+        active &&
+          darkMode &&
+          styles.filterCardActiveDark,
         pressed &&
           styles.pressed,
       ]}
@@ -2200,15 +2371,25 @@ function FilterCard({
       <View
         style={[
           styles.filterIcon,
+          darkMode &&
+            styles.filterIconDark,
           active &&
             styles.filterIconActive,
+          active &&
+            darkMode &&
+            styles.filterIconActiveDark,
         ]}
       >
         <Text
           style={[
             styles.filterIconText,
+            darkMode &&
+              styles.filterIconTextDark,
             active &&
               styles.filterIconTextActive,
+            active &&
+              darkMode &&
+              styles.filterIconTextActiveDark,
           ]}
         >
           {icon}
@@ -2224,8 +2405,13 @@ function FilterCard({
         <Text
           style={[
             styles.filterLabel,
+            darkMode &&
+              styles.filterLabelDark,
             active &&
               styles.filterLabelActive,
+            active &&
+              darkMode &&
+              styles.filterLabelActiveDark,
           ]}
         >
           {label}
@@ -2234,15 +2420,25 @@ function FilterCard({
         <View
           style={[
             styles.filterCount,
+            darkMode &&
+              styles.filterCountDark,
             active &&
               styles.filterCountActive,
+            active &&
+              darkMode &&
+              styles.filterCountActiveDark,
           ]}
         >
           <Text
             style={[
               styles.filterCountText,
+              darkMode &&
+                styles.filterCountTextDark,
               active &&
                 styles.filterCountTextActive,
+              active &&
+                darkMode &&
+                styles.filterCountTextActiveDark,
             ]}
           >
             {count}
@@ -2266,6 +2462,8 @@ function AssignmentCard({
   assignment: Assignment;
   onMenu: () => void;
 }) {
+  const { darkMode } = useTheme();
+
   const priorityStyle =
     assignment.priority ===
     'High'
@@ -2275,11 +2473,22 @@ function AssignmentCard({
       ? styles.lowPriority
       : styles.mediumPriority;
 
+  const darkPriorityStyle =
+    assignment.priority ===
+    'High'
+      ? styles.highPriorityDark
+      : assignment.priority ===
+        'Low'
+      ? styles.lowPriorityDark
+      : styles.mediumPriorityDark;
+
   return (
     <View
-      style={
-        styles.assignmentCard
-      }
+      style={[
+        styles.assignmentCard,
+        darkMode &&
+          styles.assignmentCardDark,
+      ]}
     >
 
       {/* MAIN */}
@@ -2293,6 +2502,8 @@ function AssignmentCard({
         <View
           style={[
             styles.checkbox,
+            darkMode &&
+              styles.checkboxDark,
             assignment.status ===
               'Completed' &&
               styles.checkboxCompleted,
@@ -2325,6 +2536,8 @@ function AssignmentCard({
             <Text
               style={[
                 styles.assignmentTitle,
+                darkMode &&
+                  styles.assignmentTitleDark,
                 assignment.status ===
                   'Completed' &&
                   styles.completedTitle,
@@ -2338,12 +2551,16 @@ function AssignmentCard({
               style={[
                 styles.priorityBadge,
                 priorityStyle,
+                darkMode &&
+                  darkPriorityStyle,
               ]}
             >
               <Text
-                style={
-                  styles.priorityBadgeText
-                }
+                style={[
+                  styles.priorityBadgeText,
+                  darkMode &&
+                    styles.priorityBadgeTextDark,
+                ]}
               >
                 {assignment.priority}
               </Text>
@@ -2358,17 +2575,21 @@ function AssignmentCard({
           >
 
             <Text
-              style={
-                styles.detailIcon
-              }
+              style={[
+                styles.detailIcon,
+                darkMode &&
+                  styles.detailIconDark,
+              ]}
             >
               □
             </Text>
 
             <Text
-              style={
-                styles.detailText
-              }
+              style={[
+                styles.detailText,
+                darkMode &&
+                  styles.detailTextDark,
+              ]}
             >
               {assignment.dueDate
                 ? displayDate(
@@ -2378,17 +2599,21 @@ function AssignmentCard({
             </Text>
 
             <Text
-              style={
-                styles.detailSeparator
-              }
+              style={[
+                styles.detailSeparator,
+                darkMode &&
+                  styles.detailSeparatorDark,
+              ]}
             >
               •
             </Text>
 
             <Text
-              style={
-                styles.detailText
-              }
+              style={[
+                styles.detailText,
+                darkMode &&
+                  styles.detailTextDark,
+              ]}
             >
               {assignment.subject}
             </Text>
@@ -2403,17 +2628,21 @@ function AssignmentCard({
             >
 
               <Text
-                style={
-                  styles.detailIcon
-                }
+                style={[
+                  styles.detailIcon,
+                  darkMode &&
+                    styles.detailIconDark,
+                ]}
               >
                 ≡
               </Text>
 
               <Text
-                style={
-                  styles.notesText
-                }
+                style={[
+                  styles.notesText,
+                  darkMode &&
+                    styles.notesTextDark,
+                ]}
                 numberOfLines={2}
               >
                 {assignment.notes}
@@ -2429,9 +2658,11 @@ function AssignmentCard({
       {/* BOTTOM */}
 
       <View
-        style={
-          styles.cardBottomRow
-        }
+        style={[
+          styles.cardBottomRow,
+          darkMode &&
+            styles.cardBottomRowDark,
+        ]}
       >
 
         <View
@@ -2444,12 +2675,16 @@ function AssignmentCard({
                 'In Progress'
               ? styles.progressStatus
               : styles.pendingStatus,
+            darkMode &&
+              styles.statusBadgeDark,
           ]}
         >
           <Text
-            style={
-              styles.statusText
-            }
+            style={[
+              styles.statusText,
+              darkMode &&
+                styles.statusTextDark,
+            ]}
           >
             {assignment.status}
           </Text>
@@ -2476,22 +2711,28 @@ function AssignmentCard({
                      * database integration later.
                      */
                   }}
-                  style={
-                    styles.startButton
-                  }
+                  style={[
+                    styles.startButton,
+                    darkMode &&
+                      styles.startButtonDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.startIcon
-                    }
+                    style={[
+                      styles.startIcon,
+                      darkMode &&
+                        styles.startIconDark,
+                    ]}
                   >
                     ▶
                   </Text>
 
                   <Text
-                    style={
-                      styles.startText
-                    }
+                    style={[
+                      styles.startText,
+                      darkMode &&
+                        styles.startTextDark,
+                    ]}
                   >
                     Start
                   </Text>
@@ -2504,14 +2745,18 @@ function AssignmentCard({
 
           <Pressable
             onPress={onMenu}
-            style={
-              styles.moreButton
-            }
+            style={[
+              styles.moreButton,
+              darkMode &&
+                styles.moreButtonDark,
+            ]}
           >
             <Text
-              style={
-                styles.moreText
-              }
+              style={[
+                styles.moreText,
+                darkMode &&
+                  styles.moreTextDark,
+              ]}
             >
               •••
             </Text>
@@ -2535,8 +2780,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7FAFC',
   },
 
+  safeAreaDark: {
+    backgroundColor: '#111827',
+  },
+
   screen: {
     flex: 1,
+  },
+
+  screenDark: {
+    backgroundColor: '#111827',
   },
 
   pressed: {
@@ -2549,7 +2802,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingTop: 35,
     paddingBottom: 14,
   },
 
@@ -2562,8 +2815,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  iconButtonDark: {
+    backgroundColor: '#193746',
+  },
+
   iconButtonActive: {
     backgroundColor: '#CDEFFF',
+  },
+
+  iconButtonActiveDark: {
+    backgroundColor: '#24566B',
   },
 
   backIcon: {
@@ -2571,6 +2832,10 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     color: '#318AB8',
     marginTop: -3,
+  },
+
+  backIconDark: {
+    color: '#7CC7E7',
   },
 
   headerTitleContainer: {
@@ -2584,10 +2849,18 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
+  headerTitleDark: {
+    color: '#F9FAFB',
+  },
+
   headerSubtitle: {
     marginTop: 3,
     fontSize: 12,
     color: '#7C8790',
+  },
+
+  headerSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   headerActions: {
@@ -2599,6 +2872,10 @@ const styles = StyleSheet.create({
     fontSize: 23,
     color: '#287FA9',
     fontWeight: '600',
+  },
+
+  headerIconDark: {
+    color: '#7CC7E7',
   },
 
   /* SEARCH */
@@ -2616,9 +2893,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
   },
 
+  searchContainerDark: {
+    backgroundColor: '#1F2937',
+    borderColor: '#374151',
+  },
+
   searchIcon: {
     fontSize: 21,
     color: '#7D8991',
+  },
+
+  searchIconDark: {
+    color: '#9CA3AF',
   },
 
   searchInput: {
@@ -2626,6 +2912,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 13,
     color: '#111827',
+  },
+
+  searchInputDark: {
+    color: '#F9FAFB',
   },
 
   clearSearch: {
@@ -2649,11 +2939,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
+  dateModeBannerDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
+  },
+
   dateModeLabel: {
     fontSize: 9,
     fontWeight: '800',
     color: '#5E9BB8',
     letterSpacing: 1,
+  },
+
+  dateModeLabelDark: {
+    color: '#7CC7E7',
   },
 
   dateModeText: {
@@ -2663,6 +2962,10 @@ const styles = StyleSheet.create({
     color: '#247DA7',
   },
 
+  dateModeTextDark: {
+    color: '#7CC7E7',
+  },
+
   clearDateModeButton: {
     paddingHorizontal: 11,
     paddingVertical: 7,
@@ -2670,10 +2973,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
+  clearDateModeButtonDark: {
+    backgroundColor: '#1F2937',
+  },
+
   clearDateModeButtonText: {
     fontSize: 11,
     fontWeight: '800',
     color: '#318AB8',
+  },
+
+  clearDateModeButtonTextDark: {
+    color: '#7CC7E7',
   },
 
   /* FILTER */
@@ -2699,9 +3010,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  filterCardDark: {
+    backgroundColor: '#1F2937',
+    borderColor: '#374151',
+  },
+
   filterCardActive: {
     backgroundColor: '#DDF3FF',
     borderColor: '#A8DDF2',
+  },
+
+  filterCardActiveDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
   },
 
   filterIcon: {
@@ -2713,8 +3034,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  filterIconDark: {
+    backgroundColor: '#374151',
+  },
+
   filterIconActive: {
     backgroundColor: '#FFFFFF',
+  },
+
+  filterIconActiveDark: {
+    backgroundColor: '#1F2937',
   },
 
   filterIconText: {
@@ -2722,8 +3051,16 @@ const styles = StyleSheet.create({
     color: '#7B858D',
   },
 
+  filterIconTextDark: {
+    color: '#9CA3AF',
+  },
+
   filterIconTextActive: {
     color: '#3498C6',
+  },
+
+  filterIconTextActiveDark: {
+    color: '#7CC7E7',
   },
 
   filterTextContainer: {
@@ -2737,8 +3074,16 @@ const styles = StyleSheet.create({
     color: '#4E5961',
   },
 
+  filterLabelDark: {
+    color: '#D1D5DB',
+  },
+
   filterLabelActive: {
     color: '#267FA9',
+  },
+
+  filterLabelActiveDark: {
+    color: '#7CC7E7',
   },
 
   filterCount: {
@@ -2753,8 +3098,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
 
+  filterCountDark: {
+    backgroundColor: '#374151',
+  },
+
   filterCountActive: {
     backgroundColor: '#FFFFFF',
+  },
+
+  filterCountActiveDark: {
+    backgroundColor: '#1F2937',
   },
 
   filterCountText: {
@@ -2763,8 +3116,16 @@ const styles = StyleSheet.create({
     color: '#69747C',
   },
 
+  filterCountTextDark: {
+    color: '#9CA3AF',
+  },
+
   filterCountTextActive: {
     color: '#318AB8',
+  },
+
+  filterCountTextActiveDark: {
+    color: '#7CC7E7',
   },
 
   /* SECTION */
@@ -2788,6 +3149,10 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
+  sectionTitleDark: {
+    color: '#F9FAFB',
+  },
+
   sectionCount: {
     minWidth: 26,
     height: 24,
@@ -2799,16 +3164,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
   },
 
+  sectionCountDark: {
+    backgroundColor: '#193746',
+  },
+
   sectionCountText: {
     fontSize: 11,
     fontWeight: '800',
     color: '#318AB8',
   },
 
+  sectionCountTextDark: {
+    color: '#7CC7E7',
+  },
+
   sectionSubtitle: {
     marginTop: 3,
     fontSize: 11,
     color: '#8A949C',
+  },
+
+  sectionSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   addTopButton: {
@@ -2819,10 +3196,18 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
 
+  addTopButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   addTopButtonText: {
     fontSize: 12,
     fontWeight: '800',
     color: '#257DA7',
+  },
+
+  addTopButtonTextDark: {
+    color: '#BDE7F8',
   },
 
   /* LIST */
@@ -2857,16 +3242,28 @@ const styles = StyleSheet.create({
     marginBottom: 17,
   },
 
+  emptyIconDark: {
+    backgroundColor: '#193746',
+  },
+
   emptyIconText: {
     fontSize: 30,
     fontWeight: '800',
     color: '#63B8DC',
   },
 
+  emptyIconTextDark: {
+    color: '#7CC7E7',
+  },
+
   emptyTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#17202A',
+  },
+
+  emptyTitleDark: {
+    color: '#F9FAFB',
   },
 
   emptyDescription: {
@@ -2877,6 +3274,10 @@ const styles = StyleSheet.create({
     color: '#8A949C',
   },
 
+  emptyDescriptionDark: {
+    color: '#9CA3AF',
+  },
+
   emptyButton: {
     marginTop: 19,
     backgroundColor: '#BDE7F8',
@@ -2885,10 +3286,18 @@ const styles = StyleSheet.create({
     borderRadius: 19,
   },
 
+  emptyButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   emptyButtonText: {
     fontSize: 13,
     fontWeight: '800',
     color: '#257DA7',
+  },
+
+  emptyButtonTextDark: {
+    color: '#BDE7F8',
   },
 
   /* ASSIGNMENT CARD */
@@ -2909,6 +3318,11 @@ const styles = StyleSheet.create({
     shadowRadius: 7,
   },
 
+  assignmentCardDark: {
+    backgroundColor: '#1F2937',
+    borderColor: '#374151',
+  },
+
   cardMainRow: {
     flexDirection: 'row',
   },
@@ -2922,6 +3336,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
+  },
+
+  checkboxDark: {
+    borderColor: '#6B7280',
   },
 
   checkboxCompleted: {
@@ -2952,6 +3370,10 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
+  assignmentTitleDark: {
+    color: '#F9FAFB',
+  },
+
   completedTitle: {
     textDecorationLine: 'line-through',
     color: '#9CA3AF',
@@ -2976,10 +3398,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE0E4',
   },
 
+  lowPriorityDark: {
+    backgroundColor: '#304229',
+  },
+
+  mediumPriorityDark: {
+    backgroundColor: '#4A4027',
+  },
+
+  highPriorityDark: {
+    backgroundColor: '#4A2F35',
+  },
+
   priorityBadgeText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#555B61',
+  },
+
+  priorityBadgeTextDark: {
+    color: '#D1D5DB',
   },
 
   detailsRow: {
@@ -2994,14 +3432,26 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
 
+  detailIconDark: {
+    color: '#7CC7E7',
+  },
+
   detailText: {
     fontSize: 12,
     color: '#727D85',
   },
 
+  detailTextDark: {
+    color: '#9CA3AF',
+  },
+
   detailSeparator: {
     marginHorizontal: 6,
     color: '#B0B7BC',
+  },
+
+  detailSeparatorDark: {
+    color: '#6B7280',
   },
 
   notesRow: {
@@ -3017,6 +3467,10 @@ const styles = StyleSheet.create({
     color: '#8A949C',
   },
 
+  notesTextDark: {
+    color: '#9CA3AF',
+  },
+
   cardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3025,6 +3479,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F0F2F3',
+  },
+
+  cardBottomRowDark: {
+    borderTopColor: '#374151',
   },
 
   statusBadge: {
@@ -3045,10 +3503,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#D9F8DD',
   },
 
+  statusBadgeDark: {
+    backgroundColor: '#374151',
+  },
+
   statusText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#5C666D',
+  },
+
+  statusTextDark: {
+    color: '#D1D5DB',
   },
 
   actionRow: {
@@ -3066,16 +3532,28 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
 
+  startButtonDark: {
+    backgroundColor: '#193746',
+  },
+
   startIcon: {
     fontSize: 9,
     color: '#348BC0',
     marginRight: 5,
   },
 
+  startIconDark: {
+    color: '#7CC7E7',
+  },
+
   startText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#348BC0',
+  },
+
+  startTextDark: {
+    color: '#7CC7E7',
   },
 
   moreButton: {
@@ -3087,6 +3565,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  moreButtonDark: {
+    backgroundColor: '#374151',
+  },
+
   moreText: {
     fontSize: 13,
     letterSpacing: 1,
@@ -3094,9 +3576,11 @@ const styles = StyleSheet.create({
     marginTop: -5,
   },
 
-  /* ============================================================
-     THREE DOT MENU
-  ============================================================ */
+  moreTextDark: {
+    color: '#D1D5DB',
+  },
+
+  /* THREE DOT MENU */
 
   menuModalOverlay: {
     flex: 1,
@@ -3122,11 +3606,19 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
   },
 
+  menuCardDark: {
+    backgroundColor: '#1F2937',
+  },
+
   menuTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#17202A',
     paddingHorizontal: 4,
+  },
+
+  menuTitleDark: {
+    color: '#F9FAFB',
   },
 
   menuAssignmentTitle: {
@@ -3135,6 +3627,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 9,
     paddingHorizontal: 4,
+  },
+
+  menuAssignmentTitleDark: {
+    color: '#9CA3AF',
   },
 
   menuItem: {
@@ -3153,13 +3649,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  menuItemIconDark: {
+    backgroundColor: '#193746',
+  },
+
   menuItemIconText: {
     fontSize: 20,
     color: '#318AB8',
   },
 
+  menuItemIconTextDark: {
+    color: '#7CC7E7',
+  },
+
   doneMenuIcon: {
     backgroundColor: '#DDF8E2',
+  },
+
+  doneMenuIconDark: {
+    backgroundColor: '#24432A',
   },
 
   doneMenuIconText: {
@@ -3189,11 +3697,19 @@ const styles = StyleSheet.create({
     color: '#303A41',
   },
 
+  menuItemTitleDark: {
+    color: '#F9FAFB',
+  },
+
   menuItemSubtitle: {
     marginTop: 3,
     fontSize: 10,
     lineHeight: 14,
     color: '#929BA1',
+  },
+
+  menuItemSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   deleteMenuTitle: {
@@ -3209,10 +3725,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  menuCancelButtonDark: {
+    backgroundColor: '#374151',
+  },
+
   menuCancelText: {
     fontSize: 13,
     fontWeight: '800',
     color: '#657078',
+  },
+
+  menuCancelTextDark: {
+    color: '#D1D5DB',
   },
 
   /* FLOATING BUTTON */
@@ -3236,6 +3760,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
 
+  floatingButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   floatingButtonPressed: {
     transform: [
       {
@@ -3249,6 +3777,10 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     fontWeight: '300',
     color: '#257DA7',
+  },
+
+  floatingButtonTextDark: {
+    color: '#BDE7F8',
   },
 
   /* FORM */
@@ -3268,6 +3800,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 
+  modalCardDark: {
+    backgroundColor: '#1F2937',
+  },
+
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -3281,10 +3817,18 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
+  modalTitleDark: {
+    color: '#F9FAFB',
+  },
+
   modalSubtitle: {
     marginTop: 4,
     fontSize: 12,
     color: '#8A949C',
+  },
+
+  modalSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   closeButton: {
@@ -3296,11 +3840,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  closeButtonDark: {
+    backgroundColor: '#374151',
+  },
+
   closeText: {
     fontSize: 25,
     lineHeight: 27,
     color: '#68737B',
     fontWeight: '300',
+  },
+
+  closeTextDark: {
+    color: '#D1D5DB',
   },
 
   inputLabel: {
@@ -3309,6 +3861,10 @@ const styles = StyleSheet.create({
     color: '#5D666D',
     marginBottom: 7,
     marginTop: 12,
+  },
+
+  inputLabelDark: {
+    color: '#D1D5DB',
   },
 
   input: {
@@ -3320,6 +3876,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#111827',
     backgroundColor: '#FFFFFF',
+  },
+
+  inputDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+    color: '#F9FAFB',
   },
 
   twoColumn: {
@@ -3342,10 +3904,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
+  dateInputDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+  },
+
   dateInputText: {
     flex: 1,
     fontSize: 13,
     color: '#111827',
+  },
+
+  dateInputTextDark: {
+    color: '#F9FAFB',
   },
 
   placeholderText: {
@@ -3372,9 +3943,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  priorityButtonDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+  },
+
   priorityButtonActive: {
     backgroundColor: '#DDF3FF',
     borderColor: '#8DD1ED',
+  },
+
+  priorityButtonActiveDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
   },
 
   priorityText: {
@@ -3383,9 +3964,17 @@ const styles = StyleSheet.create({
     color: '#6B737A',
   },
 
+  priorityTextDark: {
+    color: '#D1D5DB',
+  },
+
   priorityTextActive: {
     color: '#2584AF',
     fontWeight: '800',
+  },
+
+  priorityTextActiveDark: {
+    color: '#7CC7E7',
   },
 
   notesInput: {
@@ -3409,10 +3998,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  cancelButtonDark: {
+    borderColor: '#4B5563',
+  },
+
   cancelText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#6B737A',
+  },
+
+  cancelTextDark: {
+    color: '#D1D5DB',
   },
 
   addButton: {
@@ -3424,14 +4021,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  addButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   addButtonDisabled: {
     backgroundColor: '#E8EDF0',
+  },
+
+  addButtonDisabledDark: {
+    backgroundColor: '#374151',
   },
 
   addButtonText: {
     fontSize: 13,
     fontWeight: '800',
     color: '#257DA7',
+  },
+
+  addButtonTextDark: {
+    color: '#BDE7F8',
   },
 
   /* DATE PICKER */
@@ -3452,6 +4061,10 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
+  datePickerCardDark: {
+    backgroundColor: '#1F2937',
+  },
+
   datePickerHandle: {
     width: 42,
     height: 5,
@@ -3459,6 +4072,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#C9CED2',
     alignSelf: 'center',
     marginBottom: 17,
+  },
+
+  datePickerHandleDark: {
+    backgroundColor: '#4B5563',
   },
 
   datePickerHeader: {
@@ -3473,10 +4090,18 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
+  datePickerTitleDark: {
+    color: '#F9FAFB',
+  },
+
   datePickerSubtitle: {
     marginTop: 4,
     fontSize: 12,
     color: '#8A949C',
+  },
+
+  datePickerSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   monthHeader: {
@@ -3496,16 +4121,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  monthArrowDark: {
+    backgroundColor: '#193746',
+  },
+
   monthArrowText: {
     fontSize: 28,
     lineHeight: 30,
     color: '#318AB8',
   },
 
+  monthArrowTextDark: {
+    color: '#7CC7E7',
+  },
+
   monthTitle: {
     fontSize: 17,
     fontWeight: '800',
     color: '#17202A',
+  },
+
+  monthTitleDark: {
+    color: '#F9FAFB',
   },
 
   weekdayRow: {
@@ -3519,6 +4156,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#8B949C',
+  },
+
+  weekdayTextDark: {
+    color: '#9CA3AF',
   },
 
   calendarGrid: {
@@ -3543,6 +4184,10 @@ const styles = StyleSheet.create({
     color: '#26313A',
   },
 
+  calendarDayTextDark: {
+    color: '#E5E7EB',
+  },
+
   calendarDayTextSelected: {
     color: '#FFFFFF',
     fontWeight: '800',
@@ -3551,6 +4196,10 @@ const styles = StyleSheet.create({
   calendarTodayText: {
     color: '#318AB8',
     fontWeight: '800',
+  },
+
+  calendarTodayTextDark: {
+    color: '#7CC7E7',
   },
 
   todayDot: {
@@ -3571,6 +4220,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  selectedDateBoxDark: {
+    backgroundColor: '#193746',
+  },
+
   selectedDateIcon: {
     width: 42,
     height: 42,
@@ -3580,9 +4233,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  selectedDateIconDark: {
+    backgroundColor: '#24566B',
+  },
+
   selectedDateIconText: {
     fontSize: 19,
     color: '#318AB8',
+  },
+
+  selectedDateIconTextDark: {
+    color: '#7CC7E7',
   },
 
   selectedDateInfo: {
@@ -3595,11 +4256,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  selectedDateLabelDark: {
+    color: '#9CA3AF',
+  },
+
   selectedDateText: {
     marginTop: 2,
     fontSize: 14,
     color: '#1C2932',
     fontWeight: '800',
+  },
+
+  selectedDateTextDark: {
+    color: '#F9FAFB',
   },
 
   datePickerActions: {
@@ -3618,10 +4287,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  clearDateButtonDark: {
+    borderColor: '#4B5563',
+  },
+
   clearDateText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#69747C',
+  },
+
+  clearDateTextDark: {
+    color: '#D1D5DB',
   },
 
   confirmDateButton: {
@@ -3635,6 +4312,10 @@ const styles = StyleSheet.create({
 
   confirmDateDisabled: {
     backgroundColor: '#DCE4E8',
+  },
+
+  confirmDateDisabledDark: {
+    backgroundColor: '#374151',
   },
 
   confirmDateText: {

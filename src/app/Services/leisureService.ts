@@ -13,111 +13,102 @@ export type LeisureData = {
 export async function createLeisure(leisure: LeisureData) {
   const db = await getDb();
 
-  await db.runAsync(
+  const result = await db.runAsync(
     `
       INSERT INTO tasks (
-        id,
-        type,
         title,
-        date,
-        duration,
-        mood,
-        notes,
-        is_favorite
+        category,
+        due_date,
+        duration_minutes,
+        notes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'leisure', ?, ?, ?)
     `,
     [
-      leisure.id,
-      'leisure',
       leisure.activity,
       leisure.date,
       leisure.duration,
-      leisure.mood,
-      leisure.notes,
-      leisure.isFavorite ? 1 : 0,
+      `${leisure.mood}|${leisure.notes}|${leisure.isFavorite ? 1 : 0}`,
     ],
   );
+
+  return String(result.lastInsertRowId);
 }
 
 export async function getLeisureEntries() {
   const db = await getDb();
 
   const rows = await db.getAllAsync<{
-    id: string;
+    id: number;
     title: string;
-    date: string;
-    duration: number;
-    mood: LeisureData['mood'];
+    due_date: string;
+    duration_minutes: number;
     notes: string;
-    is_favorite: number;
   }>(
     `
       SELECT
         id,
         title,
-        date,
-        duration,
-        mood,
-        notes,
-        is_favorite
+        due_date,
+        duration_minutes,
+        notes
       FROM tasks
-      WHERE type = 'leisure'
-      ORDER BY date DESC
+      WHERE category = 'leisure'
+      ORDER BY due_date DESC
     `,
   );
 
-  return rows.map((row) => ({
-    id: row.id,
-    activity: row.title,
-    duration: row.duration,
-    date: row.date,
-    mood: row.mood,
-    notes: row.notes,
-    isFavorite: row.is_favorite === 1,
-  }));
+  return rows.map((row) => {
+    const parts = (row.notes || '').split('|');
+
+    return {
+      id: String(row.id),
+      activity: row.title,
+      duration: Number(row.duration_minutes || 0),
+      date: row.due_date || '',
+      mood: (parts[0] || 'Okay') as LeisureData['mood'],
+      notes: parts[1] || '',
+      isFavorite: parts[2] === '1',
+    };
+  });
 }
 
 export async function getLeisureById(id: string) {
   const db = await getDb();
 
   const row = await db.getFirstAsync<{
-    id: string;
+    id: number;
     title: string;
-    date: string;
-    duration: number;
-    mood: LeisureData['mood'];
+    due_date: string;
+    duration_minutes: number;
     notes: string;
-    is_favorite: number;
   }>(
     `
       SELECT
         id,
         title,
-        date,
-        duration,
-        mood,
-        notes,
-        is_favorite
+        due_date,
+        duration_minutes,
+        notes
       FROM tasks
       WHERE id = ?
-        AND type = 'leisure'
+        AND category = 'leisure'
     `,
-    [id],
+    [Number(id)],
   );
 
-  if (!row) {
-    return null;
-  }
+  if (!row) return null;
+
+  const parts = (row.notes || '').split('|');
 
   return {
-    id: row.id,
+    id: String(row.id),
     activity: row.title,
-    duration: row.duration,
-    date: row.date,
-    mood: row.mood,
-    notes: row.notes,
-    isFavorite: row.is_favorite === 1,
+    duration: Number(row.duration_minutes || 0),
+    date: row.due_date || '',
+    mood: (parts[0] || 'Okay') as LeisureData['mood'],
+    notes: parts[1] || '',
+    isFavorite: parts[2] === '1',
   };
 }
 
@@ -129,22 +120,18 @@ export async function updateLeisure(leisure: LeisureData) {
       UPDATE tasks
       SET
         title = ?,
-        date = ?,
-        duration = ?,
-        mood = ?,
-        notes = ?,
-        is_favorite = ?
+        due_date = ?,
+        duration_minutes = ?,
+        notes = ?
       WHERE id = ?
-        AND type = 'leisure'
+        AND category = 'leisure'
     `,
     [
       leisure.activity,
       leisure.date,
       leisure.duration,
-      leisure.mood,
-      leisure.notes,
-      leisure.isFavorite ? 1 : 0,
-      leisure.id,
+      `${leisure.mood}|${leisure.notes}|${leisure.isFavorite ? 1 : 0}`,
+      Number(leisure.id),
     ],
   );
 }
@@ -155,14 +142,30 @@ export async function toggleLeisureFavorite(
 ) {
   const db = await getDb();
 
+  const row = await db.getFirstAsync<{ notes: string }>(
+    `
+      SELECT notes
+      FROM tasks
+      WHERE id = ?
+        AND category = 'leisure'
+    `,
+    [Number(id)],
+  );
+
+  if (!row) return;
+
+  const parts = (row.notes || '').split('|');
+  const mood = parts[0] || 'Okay';
+  const notes = parts[1] || '';
+
   await db.runAsync(
     `
       UPDATE tasks
-      SET is_favorite = ?
+      SET notes = ?
       WHERE id = ?
-        AND type = 'leisure'
+        AND category = 'leisure'
     `,
-    [isFavorite ? 1 : 0, id],
+    [`${mood}|${notes}|${isFavorite ? 1 : 0}`, Number(id)],
   );
 }
 
@@ -173,8 +176,8 @@ export async function deleteLeisure(id: string) {
     `
       DELETE FROM tasks
       WHERE id = ?
-        AND type = 'leisure'
+        AND category = 'leisure'
     `,
-    [id],
+    [Number(id)],
   );
 }
