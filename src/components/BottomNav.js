@@ -1,16 +1,15 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../constants/ThemeContext';
+import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 
 const TABS = [
-  { key: 'home', icon: 'home' },
-  { key: 'grid', icon: 'grid' },
-  { key: 'notifications', icon: 'notifications' },
-  { key: 'profile', icon: 'person' },
+  { key: "home", icon: "home" },
+  { key: "grid", icon: "grid" },
+  { key: "notifications", icon: "notifications" },
+  { key: "profile", icon: "person" },
 ];
 
-export default function BottomNav({ activeTab = 'home', onTabPress }) {
+export default function BottomNav({ activeTab = "home", onTabPress }) {
   const { colors } = useTheme();
 
   return (
@@ -43,20 +42,20 @@ export default function BottomNav({ activeTab = 'home', onTabPress }) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
   },
   bar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 30,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     width: 220,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -66,7 +65,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -26,7 +26,7 @@ import {
 } from 'expo-router';
 
 import {
-  BACKGROUNDS,
+  BACKGROUND_CATEGORIES,
   MOODS,
   findImageSource,
 } from '../../constants/journalData';
@@ -34,6 +34,9 @@ import {
 import {
   useTheme,
 } from '../../constants/ThemeContext';
+
+// Flat list of every background, built from the categories in journalData.
+const BACKGROUNDS = BACKGROUND_CATEGORIES.flatMap((c) => [...c.items]);
 
 export function Screen({
   children,
@@ -177,7 +180,7 @@ export function Header({
             <Text
               style={[
                 styles.headerSubtitle,
-                { color: theme.textSoft },
+                { color: theme.textSecondary },
               ]}
             >
               {subtitle}
@@ -194,7 +197,7 @@ export function Header({
 export function ThemeSwitch() {
   const {
     theme,
-    themeKey,
+    themeName: themeKey,
     setTheme,
   } = useTheme();
 
@@ -228,7 +231,7 @@ export function ThemeSwitch() {
           color={
             themeKey === 'pink'
               ? '#F45B91'
-              : theme.muted
+              : theme.textMuted
           }
         />
 
@@ -239,7 +242,7 @@ export function ThemeSwitch() {
               color:
                 themeKey === 'pink'
                   ? theme.primary
-                  : theme.muted,
+                  : theme.textMuted,
             },
           ]}
         >
@@ -265,7 +268,7 @@ export function ThemeSwitch() {
           color={
             themeKey === 'blue'
               ? '#2457A6'
-              : theme.muted
+              : theme.textMuted
           }
         />
 
@@ -276,7 +279,7 @@ export function ThemeSwitch() {
               color:
                 themeKey === 'blue'
                   ? theme.primary
-                  : theme.muted,
+                  : theme.textMuted,
             },
           ]}
         >
@@ -331,7 +334,7 @@ export function MoodRow({
                 color={
                   active
                     ? theme.primary
-                    : theme.textSoft
+                    : theme.textSecondary
                 }
               />
             </View>
@@ -461,7 +464,7 @@ export function BottomNav({
           color={
             active === 'home'
               ? theme.primary
-              : theme.textSoft
+              : theme.textSecondary
           }
         />
 
@@ -472,7 +475,7 @@ export function BottomNav({
               color:
                 active === 'home'
                   ? theme.primary
-                  : theme.textSoft,
+                  : theme.textSecondary,
             },
           ]}
         >
@@ -494,7 +497,7 @@ export function BottomNav({
           color={
             active === 'explore'
               ? theme.primary
-              : theme.textSoft
+              : theme.textSecondary
           }
         />
 
@@ -505,7 +508,7 @@ export function BottomNav({
               color:
                 active === 'explore'
                   ? theme.primary
-                  : theme.textSoft,
+                  : theme.textSecondary,
             },
           ]}
         >
@@ -552,7 +555,7 @@ export function BottomNav({
           color={
             active === 'journal'
               ? theme.primary
-              : theme.textSoft
+              : theme.textSecondary
           }
         />
 
@@ -563,7 +566,7 @@ export function BottomNav({
               color:
                 active === 'journal'
                   ? theme.primary
-                  : theme.textSoft,
+                  : theme.textSecondary,
             },
           ]}
         >
@@ -608,7 +611,7 @@ export function BackgroundCard({
       >
         <View
           style={[
-            StyleSheet.absoluteFillObject,
+            StyleSheet.absoluteFill,
             {
               backgroundColor:
                 'rgba(255,255,255,0.80)',
@@ -651,7 +654,7 @@ export function BackgroundCard({
               styles.backgroundSubtitle,
               {
                 color:
-                  theme.textSoft,
+                  theme.textSecondary,
               },
             ]}
           >
