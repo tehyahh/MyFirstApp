@@ -343,7 +343,30 @@ export default function TaskManagerScreen() {
             BOTTOM NAVIGATION
             ========================================== */}
 
-        <BottomNavigation activeTab="home" />
+<BottomNavigation
+  activeTab="tasks"
+  onTabPress={(tab) => {
+    if (tab === "dashboard") {
+      router.replace("/?screen=dashboard");
+    }
+
+    if (tab === "journal") {
+      router.replace("/?screen=journal");
+    }
+
+    if (tab === "tasks") {
+      router.replace("/task-manager");
+    }
+
+    if (tab === "study") {
+      router.replace("/?screen=study");
+    }
+
+    if (tab === "profile") {
+      router.replace("/?screen=profile");
+    }
+  }}
+/>
       </View>
     </SafeAreaView>
   );
@@ -395,6 +418,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 24,
+    paddingTop: 24,
   },
 
   headerTextArea: {

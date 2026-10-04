@@ -27,6 +27,7 @@ import {
 } from '../Services/leisureService';
 
 import { initializeDatabase } from '../../database/db';
+import { useTheme } from '../../components/ThemeContent';
 
 type Mood = 'Great' | 'Good' | 'Okay' | 'Low';
 
@@ -40,7 +41,11 @@ type LeisureEntry = {
   isFavorite: boolean;
 };
 
-type Filter = 'All' | 'Today' | 'This Week';
+type Filter =
+  | 'All'
+  | 'Today'
+  | 'This Week'
+  | 'Schedule';
 
 type CalendarMode = 'view' | 'form';
 
@@ -182,14 +187,38 @@ function isDateInCurrentWeek(
   );
 }
 
+// ==================================================
+// FUTURE SCHEDULE
+// ==================================================
+
+function isFutureDate(
+  dateString: string,
+  today: Date,
+) {
+  const date = new Date(
+    `${dateString}T00:00:00`,
+  );
+
+  const todayStart = new Date(today);
+
+  todayStart.setHours(
+    0,
+    0,
+    0,
+    0,
+  );
+
+  return date > todayStart;
+}
+
 export default function LeisureScreen() {
   const router = useRouter();
+  const { darkMode } = useTheme();
 
   const today = new Date();
 
   const todayString =
     formatDate(today);
-
 
   const [
     leisureEntries,
@@ -197,23 +226,24 @@ export default function LeisureScreen() {
   ] = useState<LeisureEntry[]>([]);
 
   useEffect(() => {
-  const loadLeisureEntries = async () => {
-    try {
-      await initializeDatabase();
+    const loadLeisureEntries = async () => {
+      try {
+        await initializeDatabase();
 
-      const data = await getLeisureEntries();
+        const data =
+          await getLeisureEntries();
 
-      setLeisureEntries(data);
-    } catch (error) {
-      console.error(
-        'Failed to load leisure entries:',
-        error
-      );
-    }
-  };
+        setLeisureEntries(data);
+      } catch (error) {
+        console.error(
+          'Failed to load leisure entries:',
+          error,
+        );
+      }
+    };
 
-  loadLeisureEntries();
-}, []);
+    loadLeisureEntries();
+  }, []);
 
   // ==================================================
   // FILTER + SEARCH
@@ -372,160 +402,161 @@ export default function LeisureScreen() {
     setFormVisible(true);
   }
 
-async function saveLeisure() {
-  if (!activity.trim()) {
-    return;
-  }
-
-  const finalDuration =
-    Number(duration);
-
-  if (
-    !duration ||
-    Number.isNaN(finalDuration) ||
-    finalDuration <= 0
-  ) {
-    return;
-  }
-
-  if (!entryDate) {
-    return;
-  }
-
-  const cleanDuration =
-    Math.floor(finalDuration);
-
-  try {
-    if (editingEntry) {
-      const updatedEntry: LeisureEntry = {
-        ...editingEntry,
-        activity: activity.trim(),
-        duration: cleanDuration,
-        date: entryDate,
-        mood,
-        notes: notes.trim(),
-      };
-
-      await updateLeisure(
-        updatedEntry,
-      );
-
-      setLeisureEntries(
-        (currentEntries) =>
-          currentEntries.map(
-            (entry) =>
-              entry.id ===
-              editingEntry.id
-                ? updatedEntry
-                : entry,
-          ),
-      );
-    } else {
-      const newEntry: LeisureEntry = {
-        id: Date.now().toString(),
-        activity: activity.trim(),
-        duration: cleanDuration,
-        date: entryDate,
-        mood,
-        notes: notes.trim(),
-        isFavorite: false,
-      };
-
-      await createLeisure(
-        newEntry,
-      );
-
-      setLeisureEntries(
-        (currentEntries) => [
-          ...currentEntries,
-          newEntry,
-        ],
-      );
+  async function saveLeisure() {
+    if (!activity.trim()) {
+      return;
     }
 
-    closeForm();
-  } catch (error) {
-    console.error(
-      'Failed to save leisure entry:',
-      error,
-    );
+    const finalDuration =
+      Number(duration);
+
+    if (
+      !duration ||
+      Number.isNaN(finalDuration) ||
+      finalDuration <= 0
+    ) {
+      return;
+    }
+
+    if (!entryDate) {
+      return;
+    }
+
+    const cleanDuration =
+      Math.floor(finalDuration);
+
+    try {
+      if (editingEntry) {
+        const updatedEntry: LeisureEntry = {
+          ...editingEntry,
+          activity: activity.trim(),
+          duration: cleanDuration,
+          date: entryDate,
+          mood,
+          notes: notes.trim(),
+        };
+
+        await updateLeisure(
+          updatedEntry,
+        );
+
+        setLeisureEntries(
+          (currentEntries) =>
+            currentEntries.map(
+              (entry) =>
+                entry.id ===
+                editingEntry.id
+                  ? updatedEntry
+                  : entry,
+            ),
+        );
+      } else {
+        const newEntry: LeisureEntry = {
+          id: Date.now().toString(),
+          activity: activity.trim(),
+          duration: cleanDuration,
+          date: entryDate,
+          mood,
+          notes: notes.trim(),
+          isFavorite: false,
+        };
+
+        await createLeisure(
+          newEntry,
+        );
+
+        setLeisureEntries(
+          (currentEntries) => [
+            ...currentEntries,
+            newEntry,
+          ],
+        );
+      }
+
+      closeForm();
+    } catch (error) {
+      console.error(
+        'Failed to save leisure entry:',
+        error,
+      );
+    }
   }
-}
 
   // ==================================================
   // DELETE
   // ==================================================
 
   async function deleteLeisure(
-   id: string,
-) {
-  try {
-    await deleteLeisureFromDb(id);
+    id: string,
+  ) {
+    try {
+      await deleteLeisureFromDb(id);
 
-    setLeisureEntries(
-      (currentEntries) =>
-        currentEntries.filter(
-          (entry) =>
-            entry.id !== id,
-        ),
-    );
+      setLeisureEntries(
+        (currentEntries) =>
+          currentEntries.filter(
+            (entry) =>
+              entry.id !== id,
+          ),
+      );
 
-    setMenuEntry(null);
-  } catch (error) {
-    console.error(
-      'Failed to delete leisure entry:',
-      error,
-    );
+      setMenuEntry(null);
+    } catch (error) {
+      console.error(
+        'Failed to delete leisure entry:',
+        error,
+      );
+    }
   }
-}
+
   // ==================================================
   // FAVORITES
   // ==================================================
 
   async function toggleFavorite(
     id: string,
-) {
-  try {
-    const entry =
-      leisureEntries.find(
-        (item) =>
-          item.id === id,
+  ) {
+    try {
+      const entry =
+        leisureEntries.find(
+          (item) =>
+            item.id === id,
+        );
+
+      if (!entry) {
+        return;
+      }
+
+      const newFavoriteStatus =
+        !entry.isFavorite;
+
+      await toggleLeisureFavorite(
+        id,
+        newFavoriteStatus,
       );
 
-    if (!entry) {
-      return;
+      setLeisureEntries(
+        (currentEntries) =>
+          currentEntries.map(
+            (item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    isFavorite:
+                      newFavoriteStatus,
+                  }
+                : item,
+          ),
+      );
+
+      setMenuEntry(null);
+    } catch (error) {
+      console.error(
+        'Failed to update favorite status:',
+        error,
+      );
     }
-
-    const newFavoriteStatus =
-      !entry.isFavorite;
-
-    await toggleLeisureFavorite(
-      id,
-      newFavoriteStatus,
-    );
-
-    setLeisureEntries(
-      (currentEntries) =>
-        currentEntries.map(
-          (item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  isFavorite:
-                    newFavoriteStatus,
-                }
-              : item,
-        ),
-    );
-
-    setMenuEntry(null);
-  } catch (error) {
-    console.error(
-      'Failed to update favorite status:',
-      error,
-    );
   }
-}
 
   // ==================================================
   // SEARCH + FILTER
@@ -589,12 +620,25 @@ async function saveLeisure() {
         );
       }
 
+      // Scheduled future leisure.
+      else if (
+        activeFilter ===
+        'Schedule'
+      ) {
+        result = result.filter(
+          (entry) =>
+            isFutureDate(
+              entry.date,
+              today,
+            ),
+        );
+      }
+
       return result.sort(
-      (a, b) =>
-      Number(b.isFavorite) -
- 
-  Number(a.isFavorite),
-);
+        (a, b) =>
+          Number(b.isFavorite) -
+          Number(a.isFavorite),
+      );
     }, [
       leisureEntries,
       searchText,
@@ -789,10 +833,18 @@ async function saveLeisure() {
 
   return (
     <SafeAreaView
-      style={styles.safeArea}
+      style={[
+        styles.safeArea,
+        darkMode &&
+          styles.safeAreaDark,
+      ]}
     >
       <View
-        style={styles.screen}
+        style={[
+          styles.screen,
+          darkMode &&
+            styles.screenDark,
+        ]}
       >
         <ScrollView
           contentContainerStyle={
@@ -804,6 +856,8 @@ async function saveLeisure() {
               setSearchVisible(
                 false,
               );
+
+              setSearchText('');
             }
           }}
         >
@@ -814,17 +868,21 @@ async function saveLeisure() {
             style={styles.header}
           >
             <Pressable
-              style={
-                styles.backButton
-              }
+              style={[
+                styles.backButton,
+                darkMode &&
+                  styles.backButtonDark,
+              ]}
               onPress={() =>
                 router.back()
               }
             >
               <Text
-                style={
-                  styles.backText
-                }
+                style={[
+                  styles.backText,
+                  darkMode &&
+                    styles.backTextDark,
+                ]}
               >
                 ‹
               </Text>
@@ -836,17 +894,21 @@ async function saveLeisure() {
               }
             >
               <Text
-                style={
-                  styles.headerTitle
-                }
+                style={[
+                  styles.headerTitle,
+                  darkMode &&
+                    styles.headerTitleDark,
+                ]}
               >
                 Leisure
               </Text>
 
               <Text
-                style={
-                  styles.headerSubtitle
-                }
+                style={[
+                  styles.headerSubtitle,
+                  darkMode &&
+                    styles.headerSubtitleDark,
+                ]}
               >
                 Rest, recharge, and enjoy
                 your time.
@@ -859,36 +921,52 @@ async function saveLeisure() {
               }
             >
               <Pressable
-                style={
-                  styles.iconButton
-                }
-                onPress={() =>
-                  setSearchVisible(
-                    !searchVisible,
-                  )
-                }
+                style={[
+                  styles.iconButton,
+                  darkMode &&
+                    styles.iconButtonDark,
+                ]}
+                onPress={() => {
+                  if (searchVisible) {
+                    setSearchVisible(
+                      false,
+                    );
+
+                    setSearchText('');
+                  } else {
+                    setSearchVisible(
+                      true,
+                    );
+                  }
+                }}
               >
                 <Text
-                  style={
-                    styles.iconText
-                  }
+                  style={[
+                    styles.iconText,
+                    darkMode &&
+                      styles.iconTextDark,
+                  ]}
                 >
                   ⌕
                 </Text>
               </Pressable>
 
               <Pressable
-                style={
-                  styles.iconButton
-                }
+                style={[
+                  styles.iconButton,
+                  darkMode &&
+                    styles.iconButtonDark,
+                ]}
                 onPress={
                   openLeisureDateView
                 }
               >
                 <Text
-                  style={
-                    styles.iconText
-                  }
+                  style={[
+                    styles.iconText,
+                    darkMode &&
+                      styles.iconTextDark,
+                  ]}
                 >
                   ▣
                 </Text>
@@ -900,9 +978,11 @@ async function saveLeisure() {
 
           {searchVisible && (
             <View
-              style={
-                styles.searchContainer
-              }
+              style={[
+                styles.searchContainer,
+                darkMode &&
+                  styles.searchContainerDark,
+              ]}
             >
               <TextInput
                 value={searchText}
@@ -910,10 +990,16 @@ async function saveLeisure() {
                   setSearchText
                 }
                 placeholder="Search leisure activities..."
-                placeholderTextColor="#999"
-                style={
-                  styles.searchInput
+                placeholderTextColor={
+                  darkMode
+                    ? '#9CA3AF'
+                    : '#999'
                 }
+                style={[
+                  styles.searchInput,
+                  darkMode &&
+                    styles.searchInputDark,
+                ]}
                 autoFocus
               />
 
@@ -927,9 +1013,11 @@ async function saveLeisure() {
                   }
                 >
                   <Text
-                    style={
-                      styles.clearSearch
-                    }
+                    style={[
+                      styles.clearSearch,
+                      darkMode &&
+                        styles.clearSearchDark,
+                    ]}
                   >
                     ×
                   </Text>
@@ -951,34 +1039,42 @@ async function saveLeisure() {
               }
             >
               <Text
-                style={
-                  styles.pageTitle
-                }
+                style={[
+                  styles.pageTitle,
+                  darkMode &&
+                    styles.pageTitleDark,
+                ]}
               >
                 Leisure
               </Text>
             </View>
 
             <Pressable
-              style={
-                styles.logButton
-              }
+              style={[
+                styles.logButton,
+                darkMode &&
+                  styles.logButtonDark,
+              ]}
               onPress={
                 openNewLeisure
               }
             >
               <Text
-                style={
-                  styles.plusText
-                }
+                style={[
+                  styles.plusText,
+                  darkMode &&
+                    styles.plusTextDark,
+                ]}
               >
                 ＋
               </Text>
 
               <Text
-                style={
-                  styles.logButtonText
-                }
+                style={[
+                  styles.logButtonText,
+                  darkMode &&
+                    styles.logButtonTextDark,
+                ]}
               >
                 Log Leisure
               </Text>
@@ -988,9 +1084,11 @@ async function saveLeisure() {
           {/* WORK-LIFE BALANCE */}
 
           <View
-            style={
-              styles.balanceCard
-            }
+            style={[
+              styles.balanceCard,
+              darkMode &&
+                styles.balanceCardDark,
+            ]}
           >
             <View
               style={
@@ -1006,18 +1104,22 @@ async function saveLeisure() {
               </Text>
 
               <Text
-                style={
-                  styles.balanceTitle
-                }
+                style={[
+                  styles.balanceTitle,
+                  darkMode &&
+                    styles.balanceTitleDark,
+                ]}
               >
                 Work-Life Balance
               </Text>
             </View>
 
             <Text
-              style={
-                styles.balanceSubtitle
-              }
+              style={[
+                styles.balanceSubtitle,
+                darkMode &&
+                  styles.balanceSubtitleDark,
+              ]}
             >
               Rest is part of the
               process. Take time to
@@ -1035,26 +1137,32 @@ async function saveLeisure() {
                 }
               >
                 <Text
-                  style={
-                    styles.balanceNumber
-                  }
+                  style={[
+                    styles.balanceNumber,
+                    darkMode &&
+                      styles.balanceNumberDark,
+                  ]}
                 >
                   {minutesToday}
                 </Text>
 
                 <View>
                   <Text
-                    style={
-                      styles.balanceUnit
-                    }
+                    style={[
+                      styles.balanceUnit,
+                      darkMode &&
+                        styles.balanceUnitDark,
+                    ]}
                   >
                     min
                   </Text>
 
                   <Text
-                    style={
-                      styles.balancePeriod
-                    }
+                    style={[
+                      styles.balancePeriod,
+                      darkMode &&
+                        styles.balancePeriodDark,
+                    ]}
                   >
                     today
                   </Text>
@@ -1062,9 +1170,11 @@ async function saveLeisure() {
               </View>
 
               <View
-                style={
-                  styles.balanceDivider
-                }
+                style={[
+                  styles.balanceDivider,
+                  darkMode &&
+                    styles.balanceDividerDark,
+                ]}
               />
 
               <View
@@ -1073,26 +1183,32 @@ async function saveLeisure() {
                 }
               >
                 <Text
-                  style={
-                    styles.balanceNumber
-                  }
+                  style={[
+                    styles.balanceNumber,
+                    darkMode &&
+                      styles.balanceNumberDark,
+                  ]}
                 >
                   {minutesThisWeek}
                 </Text>
 
                 <View>
                   <Text
-                    style={
-                      styles.balanceUnit
-                    }
+                    style={[
+                      styles.balanceUnit,
+                      darkMode &&
+                        styles.balanceUnitDark,
+                    ]}
                   >
                     min
                   </Text>
 
                   <Text
-                    style={
-                      styles.balancePeriod
-                    }
+                    style={[
+                      styles.balancePeriod,
+                      darkMode &&
+                        styles.balancePeriodDark,
+                    ]}
                   >
                     this week
                   </Text>
@@ -1109,9 +1225,11 @@ async function saveLeisure() {
             }
           >
             <Text
-              style={
-                styles.summaryText
-              }
+              style={[
+                styles.summaryText,
+                darkMode &&
+                  styles.summaryTextDark,
+              ]}
             >
               {leisureEntries.length}{' '}
               {leisureEntries.length ===
@@ -1126,23 +1244,29 @@ async function saveLeisure() {
           {selectedCalendarDate && (
             <>
               <View
-                style={
-                  styles.dateView
-                }
+                style={[
+                  styles.dateView,
+                  darkMode &&
+                    styles.dateViewDark,
+                ]}
               >
                 <View>
                   <Text
-                    style={
-                      styles.dateViewLabel
-                    }
+                    style={[
+                      styles.dateViewLabel,
+                      darkMode &&
+                        styles.dateViewLabelDark,
+                    ]}
                   >
                     DATE VIEW
                   </Text>
 
                   <Text
-                    style={
-                      styles.dateViewDate
-                    }
+                    style={[
+                      styles.dateViewDate,
+                      darkMode &&
+                        styles.dateViewDateDark,
+                    ]}
                   >
                     {displayDate(
                       selectedCalendarDate,
@@ -1151,9 +1275,11 @@ async function saveLeisure() {
                 </View>
 
                 <Pressable
-                  style={
-                    styles.clearDateButton
-                  }
+                  style={[
+                    styles.clearDateButton,
+                    darkMode &&
+                      styles.clearDateButtonDark,
+                  ]}
                   onPress={() =>
                     setSelectedCalendarDate(
                       '',
@@ -1161,9 +1287,11 @@ async function saveLeisure() {
                   }
                 >
                   <Text
-                    style={
-                      styles.clearDateText
-                    }
+                    style={[
+                      styles.clearDateText,
+                      darkMode &&
+                        styles.clearDateTextDark,
+                    ]}
                   >
                     Clear
                   </Text>
@@ -1177,9 +1305,11 @@ async function saveLeisure() {
               >
                 <View>
                   <Text
-                    style={
-                      styles.dateHeadingTitle
-                    }
+                    style={[
+                      styles.dateHeadingTitle,
+                      darkMode &&
+                        styles.dateHeadingTitleDark,
+                    ]}
                   >
                     {displayDate(
                       selectedCalendarDate,
@@ -1187,23 +1317,29 @@ async function saveLeisure() {
                   </Text>
 
                   <Text
-                    style={
-                      styles.dateHeadingSubtitle
-                    }
+                    style={[
+                      styles.dateHeadingSubtitle,
+                      darkMode &&
+                        styles.dateHeadingSubtitleDark,
+                    ]}
                   >
                     Leisure for this date
                   </Text>
                 </View>
 
                 <View
-                  style={
-                    styles.dateCount
-                  }
+                  style={[
+                    styles.dateCount,
+                    darkMode &&
+                      styles.dateCountDark,
+                  ]}
                 >
                   <Text
-                    style={
-                      styles.dateCountText
-                    }
+                    style={[
+                      styles.dateCountText,
+                      darkMode &&
+                        styles.dateCountTextDark,
+                    ]}
                   >
                     {
                       filteredEntries.length
@@ -1279,6 +1415,28 @@ async function saveLeisure() {
                   )
                 }
               />
+
+              <FilterButton
+                label="Schedule"
+                count={
+                  leisureEntries.filter(
+                    (entry) =>
+                      isFutureDate(
+                        entry.date,
+                        today,
+                      ),
+                  ).length
+                }
+                active={
+                  activeFilter ===
+                  'Schedule'
+                }
+                onPress={() =>
+                  setActiveFilter(
+                    'Schedule',
+                  )
+                }
+              />
             </View>
           )}
 
@@ -1292,14 +1450,18 @@ async function saveLeisure() {
             {filteredEntries.length ===
             0 ? (
               <View
-                style={
-                  styles.emptyState
-                }
+                style={[
+                  styles.emptyState,
+                  darkMode &&
+                    styles.emptyStateDark,
+                ]}
               >
                 <View
-                  style={
-                    styles.emptyIconCircle
-                  }
+                  style={[
+                    styles.emptyIconCircle,
+                    darkMode &&
+                      styles.emptyIconCircleDark,
+                  ]}
                 >
                   <Text
                     style={
@@ -1311,9 +1473,11 @@ async function saveLeisure() {
                 </View>
 
                 <Text
-                  style={
-                    styles.emptyTitle
-                  }
+                  style={[
+                    styles.emptyTitle,
+                    darkMode &&
+                      styles.emptyTitleDark,
+                  ]}
                 >
                   {selectedCalendarDate
                     ? 'No leisure logged on this date'
@@ -1321,9 +1485,11 @@ async function saveLeisure() {
                 </Text>
 
                 <Text
-                  style={
-                    styles.emptySubtitle
-                  }
+                  style={[
+                    styles.emptySubtitle,
+                    darkMode &&
+                      styles.emptySubtitleDark,
+                  ]}
                 >
                   {selectedCalendarDate
                     ? 'There are no leisure activities recorded for this date.'
@@ -1332,17 +1498,21 @@ async function saveLeisure() {
 
                 {!selectedCalendarDate && (
                   <Pressable
-                    style={
-                      styles.emptyButton
-                    }
+                    style={[
+                      styles.emptyButton,
+                      darkMode &&
+                        styles.emptyButtonDark,
+                    ]}
                     onPress={
                       openNewLeisure
                     }
                   >
                     <Text
-                      style={
-                        styles.emptyButtonText
-                      }
+                      style={[
+                        styles.emptyButtonText,
+                        darkMode &&
+                          styles.emptyButtonTextDark,
+                      ]}
                     >
                       ＋ Log Leisure
                     </Text>
@@ -1393,27 +1563,31 @@ async function saveLeisure() {
           }
         >
           <Pressable
-            style={
-              styles.menuCard
-            }
+            style={[
+              styles.menuCard,
+              darkMode &&
+                styles.menuCardDark,
+            ]}
             onPress={(event) =>
               event.stopPropagation()
             }
           >
             <Text
-              style={
-                styles.menuTitle
-              }
+              style={[
+                styles.menuTitle,
+                darkMode &&
+                  styles.menuTitleDark,
+              ]}
             >
               Leisure Options
             </Text>
 
-            {/* EDIT */}
-
             <Pressable
-              style={
-                styles.menuItem
-              }
+              style={[
+                styles.menuItem,
+                darkMode &&
+                  styles.menuItemDark,
+              ]}
               onPress={() => {
                 if (menuEntry) {
                   openEditLeisure(
@@ -1423,20 +1597,22 @@ async function saveLeisure() {
               }}
             >
               <Text
-                style={
-                  styles.menuItemText
-                }
+                style={[
+                  styles.menuItemText,
+                  darkMode &&
+                    styles.menuItemTextDark,
+                ]}
               >
                 ✏️ Edit Leisure
               </Text>
             </Pressable>
 
-            {/* FAVORITE */}
-
             <Pressable
-              style={
-                styles.menuItem
-              }
+              style={[
+                styles.menuItem,
+                darkMode &&
+                  styles.menuItemDark,
+              ]}
               onPress={() => {
                 if (menuEntry) {
                   toggleFavorite(
@@ -1446,9 +1622,11 @@ async function saveLeisure() {
               }}
             >
               <Text
-                style={
-                  styles.menuItemText
-                }
+                style={[
+                  styles.menuItemText,
+                  darkMode &&
+                    styles.menuItemTextDark,
+                ]}
               >
                 {menuEntry?.isFavorite
                   ? '⭐ Remove from Favorites'
@@ -1456,12 +1634,12 @@ async function saveLeisure() {
               </Text>
             </Pressable>
 
-            {/* DELETE */}
-
             <Pressable
-              style={
-                styles.menuItem
-              }
+              style={[
+                styles.menuItem,
+                darkMode &&
+                  styles.menuItemDark,
+              ]}
               onPress={() => {
                 if (menuEntry) {
                   deleteLeisure(
@@ -1479,20 +1657,22 @@ async function saveLeisure() {
               </Text>
             </Pressable>
 
-            {/* CANCEL */}
-
             <Pressable
-              style={
-                styles.cancelMenuButton
-              }
+              style={[
+                styles.cancelMenuButton,
+                darkMode &&
+                  styles.cancelMenuButtonDark,
+              ]}
               onPress={() =>
                 setMenuEntry(null)
               }
             >
               <Text
-                style={
-                  styles.cancelMenuText
-                }
+                style={[
+                  styles.cancelMenuText,
+                  darkMode &&
+                    styles.cancelMenuTextDark,
+                ]}
               >
                 Cancel
               </Text>
@@ -1536,21 +1716,23 @@ async function saveLeisure() {
               keyboardShouldPersistTaps="handled"
             >
               <View
-                style={
-                  styles.formCard
-                }
+                style={[
+                  styles.formCard,
+                  darkMode &&
+                    styles.formCardDark,
+                ]}
               >
-                {/* FORM HEADER */}
-
                 <View
                   style={
                     styles.formHeader
                   }
                 >
                   <Text
-                    style={
-                      styles.formTitle
-                    }
+                    style={[
+                      styles.formTitle,
+                      darkMode &&
+                        styles.formTitleDark,
+                    ]}
                   >
                     {editingEntry
                       ? 'Edit Leisure'
@@ -1558,29 +1740,33 @@ async function saveLeisure() {
                   </Text>
 
                   <Pressable
-                    style={
-                      styles.closeButton
-                    }
+                    style={[
+                      styles.closeButton,
+                      darkMode &&
+                        styles.closeButtonDark,
+                    ]}
                     onPress={
                       closeForm
                     }
                   >
                     <Text
-                      style={
-                        styles.closeText
-                      }
+                      style={[
+                        styles.closeText,
+                        darkMode &&
+                          styles.closeTextDark,
+                      ]}
                     >
                       ×
                     </Text>
                   </Pressable>
                 </View>
 
-                {/* ACTIVITY */}
-
                 <Text
-                  style={
-                    styles.label
-                  }
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
                 >
                   Activity
                 </Text>
@@ -1591,13 +1777,17 @@ async function saveLeisure() {
                     setActivity
                   }
                   placeholder="What did you do?"
-                  placeholderTextColor="#999"
-                  style={
-                    styles.input
+                  placeholderTextColor={
+                    darkMode
+                      ? '#9CA3AF'
+                      : '#999'
                   }
+                  style={[
+                    styles.input,
+                    darkMode &&
+                      styles.inputDark,
+                  ]}
                 />
-
-                {/* DURATION + DATE */}
 
                 <View
                   style={
@@ -1610,9 +1800,11 @@ async function saveLeisure() {
                     }
                   >
                     <Text
-                      style={
-                        styles.label
-                      }
+                      style={[
+                        styles.label,
+                        darkMode &&
+                          styles.labelDark,
+                      ]}
                     >
                       Duration
                       (minutes)
@@ -1633,11 +1825,17 @@ async function saveLeisure() {
                         )
                       }
                       placeholder="30"
-                      placeholderTextColor="#999"
-                      keyboardType="numeric"
-                      style={
-                        styles.input
+                      placeholderTextColor={
+                        darkMode
+                          ? '#9CA3AF'
+                          : '#999'
                       }
+                      keyboardType="numeric"
+                      style={[
+                        styles.input,
+                        darkMode &&
+                          styles.inputDark,
+                      ]}
                     />
                   </View>
 
@@ -1647,17 +1845,21 @@ async function saveLeisure() {
                     }
                   >
                     <Text
-                      style={
-                        styles.label
-                      }
+                      style={[
+                        styles.label,
+                        darkMode &&
+                          styles.labelDark,
+                      ]}
                     >
                       Date
                     </Text>
 
                     <Pressable
-                      style={
-                        styles.dateInput
-                      }
+                      style={[
+                        styles.dateInput,
+                        darkMode &&
+                          styles.dateInputDark,
+                      ]}
                       onPress={
                         openFormDatePicker
                       }
@@ -1665,6 +1867,8 @@ async function saveLeisure() {
                       <Text
                         style={[
                           styles.dateInputText,
+                          darkMode &&
+                            styles.dateInputTextDark,
                           !entryDate &&
                             styles.placeholderText,
                         ]}
@@ -1680,9 +1884,11 @@ async function saveLeisure() {
                       </Text>
 
                       <Text
-                        style={
-                          styles.calendarIcon
-                        }
+                        style={[
+                          styles.calendarIcon,
+                          darkMode &&
+                            styles.calendarIconDark,
+                        ]}
                       >
                         ▣
                       </Text>
@@ -1690,12 +1896,12 @@ async function saveLeisure() {
                   </View>
                 </View>
 
-                {/* MOOD */}
-
                 <Text
-                  style={
-                    styles.label
-                  }
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
                 >
                   Mood
                 </Text>
@@ -1713,9 +1919,15 @@ async function saveLeisure() {
                         }
                         style={[
                           styles.moodButton,
+                          darkMode &&
+                            styles.moodButtonDark,
                           mood ===
                             item &&
                             styles.moodButtonActive,
+                          mood ===
+                            item &&
+                            darkMode &&
+                            styles.moodButtonActiveDark,
                         ]}
                         onPress={() =>
                           setMood(
@@ -1738,9 +1950,15 @@ async function saveLeisure() {
                         <Text
                           style={[
                             styles.moodText,
+                            darkMode &&
+                              styles.moodTextDark,
                             mood ===
                               item &&
                               styles.moodTextActive,
+                            mood ===
+                              item &&
+                              darkMode &&
+                              styles.moodTextActiveDark,
                           ]}
                         >
                           {item}
@@ -1750,12 +1968,12 @@ async function saveLeisure() {
                   )}
                 </View>
 
-                {/* NOTES */}
-
                 <Text
-                  style={
-                    styles.label
-                  }
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
                 >
                   Notes (Optional)
                 </Text>
@@ -1766,16 +1984,20 @@ async function saveLeisure() {
                     setNotes
                   }
                   placeholder="Any extra details..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={
+                    darkMode
+                      ? '#9CA3AF'
+                      : '#999'
+                  }
                   style={[
                     styles.input,
                     styles.notesInput,
+                    darkMode &&
+                      styles.inputDark,
                   ]}
                   multiline
                   textAlignVertical="top"
                 />
-
-                {/* BUTTONS */}
 
                 <View
                   style={
@@ -1783,17 +2005,21 @@ async function saveLeisure() {
                   }
                 >
                   <Pressable
-                    style={
-                      styles.cancelButton
-                    }
+                    style={[
+                      styles.cancelButton,
+                      darkMode &&
+                        styles.cancelButtonDark,
+                    ]}
                     onPress={
                       closeForm
                     }
                   >
                     <Text
-                      style={
-                        styles.cancelButtonText
-                      }
+                      style={[
+                        styles.cancelButtonText,
+                        darkMode &&
+                          styles.cancelButtonTextDark,
+                      ]}
                     >
                       Cancel
                     </Text>
@@ -1802,6 +2028,8 @@ async function saveLeisure() {
                   <Pressable
                     style={[
                       styles.saveButton,
+                      darkMode &&
+                        styles.saveButtonDark,
                       (!activity.trim() ||
                         !duration ||
                         !entryDate) &&
@@ -1817,9 +2045,11 @@ async function saveLeisure() {
                     }
                   >
                     <Text
-                      style={
-                        styles.saveButtonText
-                      }
+                      style={[
+                        styles.saveButtonText,
+                        darkMode &&
+                          styles.saveButtonTextDark,
+                      ]}
                     >
                       {editingEntry
                         ? 'Save Changes'
@@ -1860,15 +2090,15 @@ async function saveLeisure() {
           }
         >
           <Pressable
-            style={
-              styles.calendarCard
-            }
+            style={[
+              styles.calendarCard,
+              darkMode &&
+                styles.calendarCardDark,
+            ]}
             onPress={(event) =>
               event.stopPropagation()
             }
           >
-            {/* CALENDAR HEADER */}
-
             <View
               style={
                 styles.calendarHeader
@@ -1880,18 +2110,22 @@ async function saveLeisure() {
                 }
               >
                 <Text
-                  style={
-                    styles.monthArrow
-                  }
+                  style={[
+                    styles.monthArrow,
+                    darkMode &&
+                      styles.monthArrowDark,
+                  ]}
                 >
                   ‹
                 </Text>
               </Pressable>
 
               <Text
-                style={
-                  styles.monthTitle
-                }
+                style={[
+                  styles.monthTitle,
+                  darkMode &&
+                    styles.monthTitleDark,
+                ]}
               >
                 {
                   MONTHS[
@@ -1907,16 +2141,16 @@ async function saveLeisure() {
                 }
               >
                 <Text
-                  style={
-                    styles.monthArrow
-                  }
+                  style={[
+                    styles.monthArrow,
+                    darkMode &&
+                      styles.monthArrowDark,
+                  ]}
                 >
                   ›
                 </Text>
               </Pressable>
             </View>
-
-            {/* WEEKDAYS */}
 
             <View
               style={
@@ -1927,17 +2161,17 @@ async function saveLeisure() {
                 (day) => (
                   <Text
                     key={day}
-                    style={
-                      styles.weekText
-                    }
+                    style={[
+                      styles.weekText,
+                      darkMode &&
+                        styles.weekTextDark,
+                    ]}
                   >
                     {day}
                   </Text>
                 ),
               )}
             </View>
-
-            {/* DAYS */}
 
             <View
               style={
@@ -2009,6 +2243,8 @@ async function saveLeisure() {
                       <Text
                         style={[
                           styles.dayText,
+                          darkMode &&
+                            styles.dayTextDark,
                           isSelected &&
                             styles.selectedDayText,
                         ]}
@@ -2020,8 +2256,6 @@ async function saveLeisure() {
                 },
               )}
             </View>
-
-            {/* CALENDAR ACTIONS */}
 
             <View
               style={
@@ -2037,9 +2271,11 @@ async function saveLeisure() {
                 }
               >
                 <Text
-                  style={
-                    styles.clearDateButtonText
-                  }
+                  style={[
+                    styles.clearDateButtonText,
+                    darkMode &&
+                      styles.clearDateButtonTextDark,
+                  ]}
                 >
                   Clear
                 </Text>
@@ -2051,14 +2287,18 @@ async function saveLeisure() {
                     false,
                   )
                 }
-                style={
-                  styles.doneDateButton
-                }
+                style={[
+                  styles.doneDateButton,
+                  darkMode &&
+                    styles.doneDateButtonDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.doneDateButtonText
-                  }
+                  style={[
+                    styles.doneDateButtonText,
+                    darkMode &&
+                      styles.doneDateButtonTextDark,
+                  ]}
                 >
                   Done
                 </Text>
@@ -2086,20 +2326,32 @@ function FilterButton({
   active: boolean;
   onPress: () => void;
 }) {
+  const { darkMode } = useTheme();
+
   return (
     <Pressable
       style={[
         styles.filterButton,
+        darkMode &&
+          styles.filterButtonDark,
         active &&
           styles.filterButtonActive,
+        active &&
+          darkMode &&
+          styles.filterButtonActiveDark,
       ]}
       onPress={onPress}
     >
       <Text
         style={[
           styles.filterLabel,
+          darkMode &&
+            styles.filterLabelDark,
           active &&
             styles.filterLabelActive,
+          active &&
+            darkMode &&
+            styles.filterLabelActiveDark,
         ]}
       >
         {label}
@@ -2108,8 +2360,13 @@ function FilterButton({
       <Text
         style={[
           styles.filterCount,
+          darkMode &&
+            styles.filterCountDark,
           active &&
             styles.filterCountActive,
+          active &&
+            darkMode &&
+            styles.filterCountActiveDark,
         ]}
       >
         {count}
@@ -2129,23 +2386,27 @@ function LeisureCard({
   entry: LeisureEntry;
   onMenu: () => void;
 }) {
+  const { darkMode } = useTheme();
+
   return (
     <View
-      style={
-        styles.entryCard
-      }
+      style={[
+        styles.entryCard,
+        darkMode &&
+          styles.entryCardDark,
+      ]}
     >
       <View
         style={
           styles.entryTopRow
         }
       >
-        {/* MOOD ICON */}
-
         <View
-          style={
-            styles.entryIconContainer
-          }
+          style={[
+            styles.entryIconContainer,
+            darkMode &&
+              styles.entryIconContainerDark,
+          ]}
         >
           <Text
             style={
@@ -2160,8 +2421,6 @@ function LeisureCard({
           </Text>
         </View>
 
-        {/* MAIN CONTENT */}
-
         <View
           style={
             styles.entryMain
@@ -2173,9 +2432,11 @@ function LeisureCard({
             }
           >
             <Text
-              style={
-                styles.entryTitle
-              }
+              style={[
+                styles.entryTitle,
+                darkMode &&
+                  styles.entryTitleDark,
+              ]}
               numberOfLines={1}
             >
               {entry.activity}
@@ -2198,17 +2459,21 @@ function LeisureCard({
             }
           >
             <Text
-              style={
-                styles.entryMetaText
-              }
+              style={[
+                styles.entryMetaText,
+                darkMode &&
+                  styles.entryMetaTextDark,
+              ]}
             >
               ◷ {entry.duration} min
             </Text>
 
             <Text
-              style={
-                styles.entryMetaText
-              }
+              style={[
+                styles.entryMetaText,
+                darkMode &&
+                  styles.entryMetaTextDark,
+              ]}
             >
               {displayDate(
                 entry.date,
@@ -2218,25 +2483,27 @@ function LeisureCard({
 
           {entry.notes ? (
             <Text
-              style={
-                styles.entryNotes
-              }
+              style={[
+                styles.entryNotes,
+                darkMode &&
+                  styles.entryNotesDark,
+              ]}
               numberOfLines={2}
             >
               {entry.notes}
             </Text>
           ) : (
             <Text
-              style={
-                styles.entryNotesEmpty
-              }
+              style={[
+                styles.entryNotesEmpty,
+                darkMode &&
+                  styles.entryNotesEmptyDark,
+              ]}
             >
               No notes
             </Text>
           )}
         </View>
-
-        {/* RIGHT SIDE */}
 
         <View
           style={
@@ -2249,12 +2516,16 @@ function LeisureCard({
               getMoodStyle(
                 entry.mood,
               ),
+              darkMode &&
+                styles.moodBadgeDark,
             ]}
           >
             <Text
-              style={
-                styles.moodBadgeText
-              }
+              style={[
+                styles.moodBadgeText,
+                darkMode &&
+                  styles.moodBadgeTextDark,
+              ]}
             >
               {entry.mood}
             </Text>
@@ -2267,9 +2538,11 @@ function LeisureCard({
             onPress={onMenu}
           >
             <Text
-              style={
-                styles.moreText
-              }
+              style={[
+                styles.moreText,
+                darkMode &&
+                  styles.moreTextDark,
+              ]}
             >
               ⋮
             </Text>
@@ -2317,10 +2590,20 @@ const styles =
         '#FFFFFF',
     },
 
+    safeAreaDark: {
+      backgroundColor:
+        '#111827',
+    },
+
     screen: {
       flex: 1,
       backgroundColor:
         '#FFFFFF',
+    },
+
+    screenDark: {
+      backgroundColor:
+        '#111827',
     },
 
     container: {
@@ -2337,6 +2620,7 @@ const styles =
         'row',
       alignItems:
         'center',
+      paddingTop: 24,
     },
 
     backButton: {
@@ -2351,11 +2635,20 @@ const styles =
         'center',
     },
 
+    backButtonDark: {
+      backgroundColor:
+        '#193746',
+    },
+
     backText: {
       fontSize: 34,
       lineHeight: 36,
       color: '#222222',
       marginTop: -4,
+    },
+
+    backTextDark: {
+      color: '#7CC7E7',
     },
 
     headerTitleArea: {
@@ -2370,10 +2663,18 @@ const styles =
       color: '#111111',
     },
 
+    headerTitleDark: {
+      color: '#F9FAFB',
+    },
+
     headerSubtitle: {
       fontSize: 11,
       color: '#777777',
       marginTop: 2,
+    },
+
+    headerSubtitleDark: {
+      color: '#9CA3AF',
     },
 
     headerActions: {
@@ -2394,9 +2695,18 @@ const styles =
         'center',
     },
 
+    iconButtonDark: {
+      backgroundColor:
+        '#193746',
+    },
+
     iconText: {
       fontSize: 23,
       color: '#222222',
+    },
+
+    iconTextDark: {
+      color: '#7CC7E7',
     },
 
     // SEARCH
@@ -2417,16 +2727,31 @@ const styles =
         '#FAFAFA',
     },
 
+    searchContainerDark: {
+      backgroundColor:
+        '#1F2937',
+      borderColor:
+        '#374151',
+    },
+
     searchInput: {
       flex: 1,
       fontSize: 15,
       color: '#222222',
     },
 
+    searchInputDark: {
+      color: '#F9FAFB',
+    },
+
     clearSearch: {
       fontSize: 24,
       color: '#777777',
       paddingLeft: 10,
+    },
+
+    clearSearchDark: {
+      color: '#9CA3AF',
     },
 
     // TITLE
@@ -2453,6 +2778,10 @@ const styles =
       color: '#111111',
     },
 
+    pageTitleDark: {
+      color: '#F9FAFB',
+    },
+
     logButton: {
       flexDirection:
         'row',
@@ -2465,9 +2794,18 @@ const styles =
       borderRadius: 22,
     },
 
+    logButtonDark: {
+      backgroundColor:
+        '#24566B',
+    },
+
     plusText: {
       fontSize: 20,
       color: '#222222',
+    },
+
+    plusTextDark: {
+      color: '#BDE7F8',
     },
 
     logButtonText: {
@@ -2478,6 +2816,10 @@ const styles =
       marginLeft: 3,
     },
 
+    logButtonTextDark: {
+      color: '#BDE7F8',
+    },
+
     // WORK-LIFE BALANCE
 
     balanceCard: {
@@ -2486,6 +2828,11 @@ const styles =
       borderRadius: 20,
       padding: 18,
       marginBottom: 18,
+    },
+
+    balanceCardDark: {
+      backgroundColor:
+        '#193B3B',
     },
 
     balanceTitleRow: {
@@ -2507,11 +2854,19 @@ const styles =
       color: '#315F5A',
     },
 
+    balanceTitleDark: {
+      color: '#B8E6E0',
+    },
+
     balanceSubtitle: {
       fontSize: 11,
       lineHeight: 17,
       color: '#597A76',
       marginTop: 8,
+    },
+
+    balanceSubtitleDark: {
+      color: '#9FC8C3',
     },
 
     balanceStats: {
@@ -2540,11 +2895,19 @@ const styles =
       marginRight: 7,
     },
 
+    balanceNumberDark: {
+      color: '#B8E6E0',
+    },
+
     balanceUnit: {
       fontSize: 11,
       fontWeight:
         '600',
       color: '#52716D',
+    },
+
+    balanceUnitDark: {
+      color: '#A7C9C5',
     },
 
     balancePeriod: {
@@ -2553,11 +2916,20 @@ const styles =
       marginTop: 1,
     },
 
+    balancePeriodDark: {
+      color: '#8EAAA6',
+    },
+
     balanceDivider: {
       width: 1,
       height: 38,
       backgroundColor:
         '#B9D8D4',
+    },
+
+    balanceDividerDark: {
+      backgroundColor:
+        '#35605C',
     },
 
     // SUMMARY
@@ -2569,6 +2941,10 @@ const styles =
     summaryText: {
       fontSize: 12,
       color: '#666666',
+    },
+
+    summaryTextDark: {
+      color: '#9CA3AF',
     },
 
     // DATE VIEW
@@ -2588,12 +2964,21 @@ const styles =
         'space-between',
     },
 
+    dateViewDark: {
+      backgroundColor:
+        '#193746',
+    },
+
     dateViewLabel: {
       fontSize: 10,
       fontWeight:
         '700',
       color: '#6B8CA4',
       letterSpacing: 1,
+    },
+
+    dateViewLabelDark: {
+      color: '#7CC7E7',
     },
 
     dateViewDate: {
@@ -2604,6 +2989,10 @@ const styles =
       marginTop: 3,
     },
 
+    dateViewDateDark: {
+      color: '#7CC7E7',
+    },
+
     clearDateButton: {
       backgroundColor:
         '#FFFFFF',
@@ -2612,11 +3001,20 @@ const styles =
       paddingVertical: 8,
     },
 
+    clearDateButtonDark: {
+      backgroundColor:
+        '#1F2937',
+    },
+
     clearDateText: {
       fontSize: 12,
       fontWeight:
         '700',
       color: '#2876A8',
+    },
+
+    clearDateTextDark: {
+      color: '#7CC7E7',
     },
 
     dateHeading: {
@@ -2636,10 +3034,18 @@ const styles =
       color: '#222222',
     },
 
+    dateHeadingTitleDark: {
+      color: '#F9FAFB',
+    },
+
     dateHeadingSubtitle: {
       fontSize: 12,
       color: '#777777',
       marginTop: 3,
+    },
+
+    dateHeadingSubtitleDark: {
+      color: '#9CA3AF',
     },
 
     dateCount: {
@@ -2654,11 +3060,20 @@ const styles =
         'center',
     },
 
+    dateCountDark: {
+      backgroundColor:
+        '#193746',
+    },
+
     dateCountText: {
       fontSize: 13,
       fontWeight:
         '700',
       color: '#2876A8',
+    },
+
+    dateCountTextDark: {
+      color: '#7CC7E7',
     },
 
     // FILTERS
@@ -2674,7 +3089,7 @@ const styles =
 
     filterButton: {
       flex: 1,
-      minWidth: '30%',
+      minWidth: '45%',
       minHeight: 48,
       borderWidth: 1,
       borderColor:
@@ -2691,11 +3106,25 @@ const styles =
         '#FAFAFA',
     },
 
+    filterButtonDark: {
+      backgroundColor:
+        '#1F2937',
+      borderColor:
+        '#374151',
+    },
+
     filterButtonActive: {
       backgroundColor:
         '#E5F3FF',
       borderColor:
         '#BBDDF5',
+    },
+
+    filterButtonActiveDark: {
+      backgroundColor:
+        '#193746',
+      borderColor:
+        '#24566B',
     },
 
     filterLabel: {
@@ -2705,8 +3134,16 @@ const styles =
       color: '#555555',
     },
 
+    filterLabelDark: {
+      color: '#D1D5DB',
+    },
+
     filterLabelActive: {
       color: '#2876A8',
+    },
+
+    filterLabelActiveDark: {
+      color: '#7CC7E7',
     },
 
     filterCount: {
@@ -2716,24 +3153,39 @@ const styles =
       color: '#777777',
     },
 
+    filterCountDark: {
+      color: '#9CA3AF',
+    },
+
     filterCountActive: {
       color: '#2876A8',
+    },
+
+    filterCountActiveDark: {
+      color: '#7CC7E7',
     },
 
     // ENTRIES
 
     entryList: {
-      gap: 14,
+      gap: 10,
     },
 
     entryCard: {
       borderWidth: 1,
       borderColor:
         '#D3D3D3',
-      borderRadius: 20,
-      padding: 15,
+      borderRadius: 18,
+      padding: 11,
       backgroundColor:
         '#FFFFFF',
+    },
+
+    entryCardDark: {
+      backgroundColor:
+        '#1F2937',
+      borderColor:
+        '#374151',
     },
 
     entryTopRow: {
@@ -2744,8 +3196,8 @@ const styles =
     },
 
     entryIconContainer: {
-      width: 54,
-      height: 54,
+      width: 46,
+      height: 46,
       borderRadius: 10,
       backgroundColor:
         '#FFF0F5',
@@ -2753,16 +3205,21 @@ const styles =
         'center',
       justifyContent:
         'center',
-      marginRight: 12,
+      marginRight: 10,
+    },
+
+    entryIconContainerDark: {
+      backgroundColor:
+        '#374151',
     },
 
     entryEmoji: {
-      fontSize: 27,
+      fontSize: 23,
     },
 
     entryMain: {
       flex: 1,
-      paddingRight: 6,
+      paddingRight: 4,
     },
 
     entryTitleRow: {
@@ -2774,10 +3231,14 @@ const styles =
 
     entryTitle: {
       flexShrink: 1,
-      fontSize: 15,
+      fontSize: 14,
       fontWeight:
         '700',
       color: '#222222',
+    },
+
+    entryTitleDark: {
+      color: '#F9FAFB',
     },
 
     favoriteIcon: {
@@ -2799,17 +3260,29 @@ const styles =
       color: '#888888',
     },
 
+    entryMetaTextDark: {
+      color: '#9CA3AF',
+    },
+
     entryNotes: {
-      fontSize: 11,
+      fontSize: 10,
       color: '#777777',
-      marginTop: 8,
+      marginTop: 5,
       lineHeight: 16,
     },
 
+    entryNotesDark: {
+      color: '#9CA3AF',
+    },
+
     entryNotesEmpty: {
-      fontSize: 11,
+      fontSize: 10,
       color: '#AAAAAA',
       marginTop: 8,
+    },
+
+    entryNotesEmptyDark: {
+      color: '#6B7280',
     },
 
     entryRight: {
@@ -2823,11 +3296,20 @@ const styles =
       borderRadius: 7,
     },
 
+    moodBadgeDark: {
+      backgroundColor:
+        '#374151',
+    },
+
     moodBadgeText: {
       fontSize: 10,
       fontWeight:
         '700',
       color: '#555555',
+    },
+
+    moodBadgeTextDark: {
+      color: '#D1D5DB',
     },
 
     greatMood: {
@@ -2866,6 +3348,10 @@ const styles =
       marginTop: -5,
     },
 
+    moreTextDark: {
+      color: '#D1D5DB',
+    },
+
     // EMPTY STATE
 
     emptyState: {
@@ -2880,6 +3366,13 @@ const styles =
       minHeight: 270,
     },
 
+    emptyStateDark: {
+      borderColor:
+        '#374151',
+      backgroundColor:
+        '#1F2937',
+    },
+
     emptyIconCircle: {
       width: 62,
       height: 62,
@@ -2890,6 +3383,11 @@ const styles =
         'center',
       justifyContent:
         'center',
+    },
+
+    emptyIconCircleDark: {
+      backgroundColor:
+        '#193746',
     },
 
     emptyIcon: {
@@ -2906,6 +3404,10 @@ const styles =
         'center',
     },
 
+    emptyTitleDark: {
+      color: '#F9FAFB',
+    },
+
     emptySubtitle: {
       fontSize: 12,
       lineHeight: 18,
@@ -2914,6 +3416,10 @@ const styles =
       textAlign:
         'center',
       maxWidth: 290,
+    },
+
+    emptySubtitleDark: {
+      color: '#9CA3AF',
     },
 
     emptyButton: {
@@ -2925,11 +3431,20 @@ const styles =
       borderRadius: 20,
     },
 
+    emptyButtonDark: {
+      backgroundColor:
+        '#24566B',
+    },
+
     emptyButtonText: {
       fontSize: 13,
       fontWeight:
         '600',
       color: '#2876A8',
+    },
+
+    emptyButtonTextDark: {
+      color: '#BDE7F8',
     },
 
     // MENU
@@ -2954,12 +3469,21 @@ const styles =
       padding: 18,
     },
 
+    menuCardDark: {
+      backgroundColor:
+        '#1F2937',
+    },
+
     menuTitle: {
       fontSize: 18,
       fontWeight:
         '700',
       color: '#222222',
       marginBottom: 8,
+    },
+
+    menuTitleDark: {
+      color: '#F9FAFB',
     },
 
     menuItem: {
@@ -2969,9 +3493,18 @@ const styles =
         '#EEEEEE',
     },
 
+    menuItemDark: {
+      borderBottomColor:
+        '#374151',
+    },
+
     menuItemText: {
       fontSize: 14,
       color: '#333333',
+    },
+
+    menuItemTextDark: {
+      color: '#F9FAFB',
     },
 
     deleteText: {
@@ -2989,11 +3522,20 @@ const styles =
       borderRadius: 12,
     },
 
+    cancelMenuButtonDark: {
+      backgroundColor:
+        '#374151',
+    },
+
     cancelMenuText: {
       fontSize: 14,
       fontWeight:
         '600',
       color: '#555555',
+    },
+
+    cancelMenuTextDark: {
+      color: '#D1D5DB',
     },
 
     // MODAL
@@ -3022,6 +3564,11 @@ const styles =
       padding: 20,
     },
 
+    formCardDark: {
+      backgroundColor:
+        '#1F2937',
+    },
+
     formHeader: {
       flexDirection:
         'row',
@@ -3039,6 +3586,10 @@ const styles =
       color: '#222222',
     },
 
+    formTitleDark: {
+      color: '#F9FAFB',
+    },
+
     closeButton: {
       width: 32,
       height: 32,
@@ -3051,10 +3602,19 @@ const styles =
         'center',
     },
 
+    closeButtonDark: {
+      backgroundColor:
+        '#374151',
+    },
+
     closeText: {
       fontSize: 23,
       color: '#555555',
       marginTop: -2,
+    },
+
+    closeTextDark: {
+      color: '#D1D5DB',
     },
 
     label: {
@@ -3064,6 +3624,10 @@ const styles =
       color: '#555555',
       marginBottom: 7,
       marginTop: 13,
+    },
+
+    labelDark: {
+      color: '#D1D5DB',
     },
 
     input: {
@@ -3077,6 +3641,14 @@ const styles =
       color: '#222222',
       backgroundColor:
         '#FFFFFF',
+    },
+
+    inputDark: {
+      backgroundColor:
+        '#111827',
+      borderColor:
+        '#374151',
+      color: '#F9FAFB',
     },
 
     twoColumnRow: {
@@ -3104,10 +3676,21 @@ const styles =
         'space-between',
     },
 
+    dateInputDark: {
+      backgroundColor:
+        '#111827',
+      borderColor:
+        '#374151',
+    },
+
     dateInputText: {
       flex: 1,
       fontSize: 12,
       color: '#333333',
+    },
+
+    dateInputTextDark: {
+      color: '#F9FAFB',
     },
 
     placeholderText: {
@@ -3118,6 +3701,10 @@ const styles =
       fontSize: 17,
       color: '#666666',
       marginLeft: 5,
+    },
+
+    calendarIconDark: {
+      color: '#7CC7E7',
     },
 
     moodRow: {
@@ -3143,11 +3730,25 @@ const styles =
         '#FFFFFF',
     },
 
+    moodButtonDark: {
+      backgroundColor:
+        '#111827',
+      borderColor:
+        '#374151',
+    },
+
     moodButtonActive: {
       backgroundColor:
         '#FFF0F5',
       borderColor:
         '#FF9FC0',
+    },
+
+    moodButtonActiveDark: {
+      backgroundColor:
+        '#193746',
+      borderColor:
+        '#24566B',
     },
 
     moodEmoji: {
@@ -3160,10 +3761,18 @@ const styles =
       marginTop: 2,
     },
 
+    moodTextDark: {
+      color: '#9CA3AF',
+    },
+
     moodTextActive: {
       color: '#D95F88',
       fontWeight:
         '700',
+    },
+
+    moodTextActiveDark: {
+      color: '#7CC7E7',
     },
 
     notesInput: {
@@ -3191,11 +3800,20 @@ const styles =
         'center',
     },
 
+    cancelButtonDark: {
+      borderColor:
+        '#4B5563',
+    },
+
     cancelButtonText: {
       fontSize: 13,
       fontWeight:
         '600',
       color: '#666666',
+    },
+
+    cancelButtonTextDark: {
+      color: '#D1D5DB',
     },
 
     saveButton: {
@@ -3210,6 +3828,11 @@ const styles =
         'center',
     },
 
+    saveButtonDark: {
+      backgroundColor:
+        '#24566B',
+    },
+
     saveButtonDisabled: {
       opacity: 0.45,
     },
@@ -3221,6 +3844,10 @@ const styles =
       color: '#2876A8',
     },
 
+    saveButtonTextDark: {
+      color: '#BDE7F8',
+    },
+
     // CALENDAR
 
     calendarCard: {
@@ -3228,6 +3855,11 @@ const styles =
         '#FFFFFF',
       borderRadius: 22,
       padding: 20,
+    },
+
+    calendarCardDark: {
+      backgroundColor:
+        '#1F2937',
     },
 
     calendarHeader: {
@@ -3246,10 +3878,18 @@ const styles =
       color: '#222222',
     },
 
+    monthTitleDark: {
+      color: '#F9FAFB',
+    },
+
     monthArrow: {
       fontSize: 30,
       color: '#555555',
       paddingHorizontal: 10,
+    },
+
+    monthArrowDark: {
+      color: '#7CC7E7',
     },
 
     weekRow: {
@@ -3267,6 +3907,10 @@ const styles =
       fontWeight:
         '600',
       color: '#888888',
+    },
+
+    weekTextDark: {
+      color: '#9CA3AF',
     },
 
     calendarGrid: {
@@ -3289,6 +3933,10 @@ const styles =
     dayText: {
       fontSize: 13,
       color: '#333333',
+    },
+
+    dayTextDark: {
+      color: '#E5E7EB',
     },
 
     selectedDay: {
@@ -3329,6 +3977,10 @@ const styles =
         '600',
     },
 
+    clearDateButtonTextDark: {
+      color: '#D1D5DB',
+    },
+
     doneDateButton: {
       backgroundColor:
         '#DCEEFF',
@@ -3337,10 +3989,19 @@ const styles =
       paddingVertical: 10,
     },
 
+    doneDateButtonDark: {
+      backgroundColor:
+        '#24566B',
+    },
+
     doneDateButtonText: {
       fontSize: 13,
       color: '#2876A8',
       fontWeight:
         '700',
+    },
+
+    doneDateButtonTextDark: {
+      color: '#BDE7F8',
     },
   });
