@@ -1,400 +1,128 @@
-import React, {
-  useState,
-} from 'react';
-
-import {
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
-
-import {
-  Ionicons,
-} from '@expo/vector-icons';
-
-import {
-  useTheme,
-} from '../../constants/ThemeContext';
-
-import {
-  AnimatedPressable,
-  Header,
-  Screen,
-} from '../../components/journal/JournalUI';
+import React, { useEffect, useState } from 'react';
+import { Alert, Modal, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { createJournal, initializeDatabase } from '../../database/db';
+import { styles } from '../../constants/appStyles';
+import { useAppTheme } from '../../constants/ThemeContext';
+import { AButton, IconBubble, Screen, defaultSolidBackground, dateString } from '../../components/AppShared';
 
 const QUICK_MESSAGES = [
-  {
-    id: 'grateful',
-    text: "I'm feeling grateful today.",
-    icon: 'sunny-outline',
-  },
-  {
-    id: 'hard',
-    text: "It's been a hard day.",
-    icon: 'cloud-outline',
-  },
-  {
-    id: 'proud',
-    text: "I'm proud of myself.",
-    icon: 'star-outline',
-  },
-  {
-    id: 'overwhelmed',
-    text: "I'm feeling a little overwhelmed.",
-    icon: 'leaf-outline',
-  },
-  {
-    id: 'good',
-    text: 'Today was actually a good day.',
-    icon: 'happy-outline',
-  },
-  {
-    id: 'okay',
-    text: "I'm just feeling okay.",
-    icon: 'flower-outline',
-  },
-  {
-    id: 'excited',
-    text: "I'm excited about what's ahead.",
-    icon: 'sparkles-outline',
-  },
-  {
-    id: 'sad',
-    text: "I'm feeling a bit sad today.",
-    icon: 'water-outline',
-  },
-];
+  ['sunny', "I'm feeling grateful today.", 'sunny-outline'],
+  ['cloudy', "It's been a hard day.", 'cloud-outline'],
+  ['proud', "I'm proud of myself.", 'star-outline'],
+  ['overwhelmed', "I'm feeling a little overwhelmed.", 'leaf-outline'],
+  ['good', 'Today was actually a good day.', 'heart-outline'],
+  ['okay', "I'm just feeling okay.", 'flower-outline'],
+  ['excited', "I'm excited about what's ahead.", 'sparkles-outline'],
+  ['sad', "I'm feeling a bit sad today.", 'water-outline'],
+] as const;
 
-export default function MindPromptScreen() {
-  const router = useRouter();
+// "What's on your mind" quick-message picker, shown as a bottom-sheet modal.
+export default function MindPromptScreen({
+  visible, close, reload, go,
+}: {
+  visible: boolean;
+  close: () => void;
+  reload: () => Promise<void>;
+  go: (s: Screen | string) => void;
+}) {
+  const { palette, themeName } = useAppTheme();
+  const [content, setContent] = useState('');
+  const [selected, setSelected] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const { theme } = useTheme();
+  useEffect(() => {
+    if (!visible) {
+      setContent('');
+      setSelected('');
+    }
+  }, [visible]);
 
-  const [selected, setSelected] =
-    useState('');
-
-  const [customText, setCustomText] =
-    useState('');
-
-  const chooseMessage = (
-    message: string
-  ) => {
+  const choose = (message: string) => {
     setSelected(message);
-    setCustomText('');
+    setContent(message);
   };
 
-  const done = () => {
-    const text =
-      customText.trim() ||
-      selected.trim();
-
-    if (!text) {
-      Alert.alert(
-        'Write something first',
-        'Choose a quick message or write your own thought.'
-      );
-
-      return;
+  const save = async () => {
+    const text = content.trim();
+    if (!text) return;
+    try {
+      setSaving(true);
+      await initializeDatabase();
+      await createJournal({
+        title: 'Quick Reflection',
+        content: text,
+        mood: selected === QUICK_MESSAGES[0][1] ? 'happy' : selected === QUICK_MESSAGES[2][1] ? 'loved' : selected === QUICK_MESSAGES[7][1] ? 'sad' : 'calm',
+        entry_date: dateString(),
+        bg_theme: defaultSolidBackground(themeName),
+        photo_uri: null,
+      });
+      await reload();
+      close();
+      go('journal');
+    } catch (error) {
+      Alert.alert('Could not save', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSaving(false);
     }
-
-    router.push({
-      pathname:
-        '/journal/AddJournalScreen',
-      params: {
-        prompt: text,
-      },
-    });
   };
 
   return (
-    <Screen>
-      <Header
-        title="What's on your mind?"
-        subtitle="Choose a message or write your own."
-        onBack={() =>
-          router.back()
-        }
-      />
-
-      <View
-        style={[
-          styles.iconHeader,
-          {
-            backgroundColor:
-              theme.primarySoft,
-          },
-        ]}
-      >
-        <Ionicons
-          name="bulb-outline"
-          size={28}
-          color={theme.primary}
-        />
-      </View>
-
-      <Text
-        style={[
-          styles.sectionTitle,
-          { color: theme.text },
-        ]}
-      >
-        Quick Messages
-      </Text>
-
-      <View style={styles.grid}>
-        {QUICK_MESSAGES.map(
-          message => {
-            const active =
-              selected ===
-              message.text;
-
-            return (
-              <AnimatedPressable
-                key={message.id}
-                onPress={() =>
-                  chooseMessage(
-                    message.text
-                  )
-                }
-                style={[
-                  styles.quickCard,
-                  {
-                    backgroundColor:
-                      active
-                        ? theme.primarySoft
-                        : theme.surface,
-                    borderColor:
-                      active
-                        ? theme.primary
-                        : theme.border,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.quickIcon,
-                    {
-                      backgroundColor:
-                        active
-                          ? theme.surface
-                          : theme.surfaceSoft,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      message.icon as any
-                    }
-                    size={21}
-                    color={
-                      theme.primary
-                    }
-                  />
-                </View>
-
-                <Text
-                  style={[
-                    styles.quickText,
-                    {
-                      color:
-                        theme.text,
-                    },
-                  ]}
-                >
-                  {message.text}
-                </Text>
-              </AnimatedPressable>
-            );
-          }
-        )}
-      </View>
-
-      <Text
-        style={[
-          styles.sectionTitle,
-          { color: theme.text },
-        ]}
-      >
-        Or write your own
-      </Text>
-
-      <TextInput
-        value={customText}
-        onChangeText={text => {
-          setCustomText(text);
-          setSelected('');
-        }}
-        multiline
-        maxLength={500}
-        placeholder="Share whatever's on your mind..."
-        placeholderTextColor={
-          theme.muted
-        }
-        style={[
-          styles.textInput,
-          {
-            backgroundColor:
-              theme.surface,
-            borderColor:
-              theme.border,
-            color: theme.text,
-          },
-        ]}
-        textAlignVertical="top"
-      />
-
-      <Text
-        style={[
-          styles.counter,
-          { color: theme.muted },
-        ]}
-      >
-        {customText.length}/500
-      </Text>
-
-      <View style={styles.buttons}>
-        <AnimatedPressable
-          onPress={() =>
-            router.back()
-          }
-          style={[
-            styles.button,
-            {
-              backgroundColor:
-                theme.surfaceSoft,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.buttonText,
-              { color: theme.text },
-            ]}
-          >
-            Cancel
-          </Text>
-        </AnimatedPressable>
-
-        <AnimatedPressable
-          onPress={done}
-          style={[
-            styles.button,
-            {
-              backgroundColor:
-                theme.primary,
-            },
-          ]}
-        >
-          <Ionicons
-            name="paper-plane-outline"
-            size={18}
-            color="#FFFFFF"
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={close}>
+      <View style={styles.quickBackdrop}>
+        <View style={[styles.quickModal, { backgroundColor: palette.card, borderColor: palette.line }]}>
+          <View style={styles.quickHandle} />
+          <View style={styles.rowBetween}>
+            <View style={styles.quickTitleRow}>
+              <IconBubble name="sunny-outline" color={palette.primary} bg={palette.soft} size={42} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.quickTitle, { color: palette.text }]}>What's on your mind?</Text>
+                <Text style={[styles.smallText, { color: palette.muted }]}>Choose a message or write your own.</Text>
+              </View>
+            </View>
+            <AButton onPress={close} style={[styles.quickClose, { backgroundColor: palette.soft }]}>
+              <Ionicons name="close" size={20} color={palette.text} />
+            </AButton>
+          </View>
+          <Text style={[styles.quickSectionLabel, { color: palette.text }]}>Quick Messages</Text>
+          <View style={styles.quickGrid}>
+            {QUICK_MESSAGES.map(([id, message, icon]) => {
+              const active = selected === message;
+              return (
+                <AButton key={id} onPress={() => choose(message)} style={[styles.quickChoice, { backgroundColor: active ? palette.soft : palette.bg2, borderColor: active ? palette.primary : palette.line }]}>
+                  <IconBubble name={icon as any} color={palette.primary} bg="#FFFFFF88" size={32} />
+                  <Text numberOfLines={2} style={[styles.quickChoiceText, { color: palette.text }]}>{message}</Text>
+                </AButton>
+              );
+            })}
+          </View>
+          <Text style={[styles.quickSectionLabel, { color: palette.text, marginTop: 12 }]}>Or write your own</Text>
+          <TextInput
+            value={content}
+            onChangeText={value => { setContent(value); setSelected(''); }}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+            placeholder="Share what's on your mind..."
+            placeholderTextColor={palette.muted}
+            style={[styles.quickInput, { color: palette.text, backgroundColor: palette.card, borderColor: palette.line }]}
           />
-
-          <Text
-            style={[
-              styles.buttonText,
-              { color: '#FFFFFF' },
-            ]}
-          >
-            Done
-          </Text>
-        </AnimatedPressable>
+          <Text style={[styles.quickCounter, { color: palette.muted }]}>{content.length}/500</Text>
+          <AButton onPress={() => { close(); go('newEntry'); }} style={styles.fullEntryLink}>
+            <Ionicons name="create-outline" size={14} color={palette.primary} />
+            <Text style={[styles.fullEntryLinkText, { color: palette.primary }]}>Write a full entry instead</Text>
+          </AButton>
+          <View style={styles.actionRow}>
+            <AButton onPress={close} style={[styles.secondaryButton, { backgroundColor: palette.soft }]}>
+              <Text style={[styles.buttonText, { color: palette.muted }]}>Cancel</Text>
+            </AButton>
+            <AButton disabled={!content.trim() || saving} onPress={save} style={[styles.primaryButton, { backgroundColor: palette.primary }]}>
+              <Ionicons name="paper-plane-outline" size={17} color="#fff" />
+              <Text style={styles.buttonTextWhite}>{saving ? 'Saving...' : 'Save'}</Text>
+            </AButton>
+          </View>
+        </View>
       </View>
-    </Screen>
+    </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  iconHeader: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 10,
-    marginTop: 6,
-  },
-
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-
-  quickCard: {
-    width: '48%',
-    minHeight: 78,
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  quickIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  quickText: {
-    flex: 1,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-
-  textInput: {
-    minHeight: 125,
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-
-  counter: {
-    textAlign: 'right',
-    fontSize: 9,
-    marginTop: 3,
-  },
-
-  buttons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-  },
-
-  button: {
-    flex: 1,
-    minHeight: 52,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 7,
-  },
-
-  buttonText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-});

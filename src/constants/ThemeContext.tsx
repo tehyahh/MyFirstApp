@@ -79,8 +79,6 @@ const BLUE_THEME: AppTheme = {
 
 type ThemeContextValue = {
   theme: AppTheme;
-  // Alias used by older components: `const { colors } = useTheme()`.
-  // Also carries legacy key names (card, textSoft, muted) from theme.ts.
   colors: AppTheme & { card: string; textSoft: string; muted: string };
   themeName: AppThemeName;
   isPink: boolean;
@@ -156,4 +154,36 @@ export function useTheme(): ThemeContextValue {
   }
 
   return context;
+}
+
+// 🔴 ADDED: Alias hook para sa screens na gumagamit ng `useAppTheme()` at `palette`
+export function useAppTheme() {
+  const context = useContext(ThemeContext);
+
+  const currentTheme = context ? context.theme : PINK_THEME;
+
+  const palette = {
+    bg: currentTheme.background,
+    bg2: currentTheme.surfaceSoft,
+    primary: currentTheme.primary,
+    primary2: currentTheme.primaryDark,
+    text: currentTheme.text,
+    muted: currentTheme.textMuted,
+    card: currentTheme.surface,
+    line: currentTheme.border,
+    soft: currentTheme.primarySoft,
+    yellow: '#FFF2B9',
+    pink: '#FFDDEB',
+    purple: '#E9DEFF',
+    green: '#DDF6E9',
+    blue: '#DDEEFF',
+  };
+
+  return {
+    palette,
+    theme: currentTheme,
+    themeName: context?.themeName || 'pink',
+    setTheme: context?.setTheme || (() => {}),
+    toggleTheme: context?.toggleTheme || (() => {}),
+  };
 }

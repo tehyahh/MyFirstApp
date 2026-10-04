@@ -872,229 +872,6 @@ function Dashboard({
   );
 }
 
-function QuickMessagesModal({
-  visible,
-  palette,
-  close,
-  reload,
-  go,
-  themeName,
-}: any) {
-  const [content, setContent] = useState("");
-  const [selected, setSelected] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const quickMessages = [
-    ["sunny", "I'm feeling grateful today.", "sunny-outline"],
-    ["cloudy", "It's been a hard day.", "cloud-outline"],
-    ["proud", "I'm proud of myself.", "star-outline"],
-    ["overwhelmed", "I'm feeling a little overwhelmed.", "leaf-outline"],
-    ["good", "Today was actually a good day.", "heart-outline"],
-    ["okay", "I'm just feeling okay.", "flower-outline"],
-    ["excited", "I'm excited about what's ahead.", "sparkles-outline"],
-    ["sad", "I'm feeling a bit sad today.", "water-outline"],
-  ] as const;
-
-  useEffect(() => {
-    if (!visible) {
-      setContent("");
-      setSelected("");
-    }
-  }, [visible]);
-
-  const choose = (message: string) => {
-    setSelected(message);
-    setContent(message);
-  };
-
-  const save = async () => {
-    const text = content.trim();
-    if (!text) return;
-    try {
-      setSaving(true);
-      await initializeDatabase();
-      await createJournal({
-        title: "Quick Reflection",
-        content: text,
-        mood:
-          selected === quickMessages[0][1]
-            ? "happy"
-            : selected === quickMessages[2][1]
-              ? "loved"
-              : selected === quickMessages[7][1]
-                ? "sad"
-                : "calm",
-        entry_date: dateString(),
-        bg_theme: defaultSolidBackground(themeName as ThemeName),
-        photo_uri: null,
-      });
-      await reload();
-      close();
-      go("journal");
-    } catch (error) {
-      Alert.alert(
-        "Could not save",
-        error instanceof Error ? error.message : String(error),
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={close}
-    >
-      <View style={styles.quickBackdrop}>
-        <View
-          style={[
-            styles.quickModal,
-            { backgroundColor: palette.card, borderColor: palette.line },
-          ]}
-        >
-          <View style={styles.quickHandle} />
-          <View style={styles.rowBetween}>
-            <View style={styles.quickTitleRow}>
-              <IconBubble
-                name="sunny-outline"
-                color={palette.primary}
-                bg={palette.soft}
-                size={42}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.quickTitle, { color: palette.text }]}>
-                  What's on your mind?
-                </Text>
-                <Text style={[styles.smallText, { color: palette.muted }]}>
-                  Choose a message or write your own.
-                </Text>
-              </View>
-            </View>
-            <AButton
-              onPress={close}
-              style={[styles.quickClose, { backgroundColor: palette.soft }]}
-            >
-              <Ionicons name="close" size={20} color={palette.text} />
-            </AButton>
-          </View>
-
-          <Text style={[styles.quickSectionLabel, { color: palette.text }]}>
-            Quick Messages
-          </Text>
-          <View style={styles.quickGrid}>
-            {quickMessages.map(([id, message, icon]) => {
-              const active = selected === message;
-              return (
-                <AButton
-                  key={id}
-                  onPress={() => choose(message)}
-                  style={[
-                    styles.quickChoice,
-                    {
-                      backgroundColor: active ? palette.soft : palette.bg2,
-                      borderColor: active ? palette.primary : palette.line,
-                    },
-                  ]}
-                >
-                  <IconBubble
-                    name={icon as any}
-                    color={palette.primary}
-                    bg="#FFFFFF88"
-                    size={32}
-                  />
-                  <Text
-                    numberOfLines={2}
-                    style={[styles.quickChoiceText, { color: palette.text }]}
-                  >
-                    {message}
-                  </Text>
-                </AButton>
-              );
-            })}
-          </View>
-
-          <Text
-            style={[
-              styles.quickSectionLabel,
-              { color: palette.text, marginTop: 12 },
-            ]}
-          >
-            Or write your own
-          </Text>
-          <TextInput
-            value={content}
-            onChangeText={(value) => {
-              setContent(value);
-              setSelected("");
-            }}
-            multiline
-            maxLength={500}
-            textAlignVertical="top"
-            placeholder="Share what's on your mind..."
-            placeholderTextColor={palette.muted}
-            style={[
-              styles.quickInput,
-              {
-                color: palette.text,
-                backgroundColor: palette.card,
-                borderColor: palette.line,
-              },
-            ]}
-          />
-          <Text style={[styles.quickCounter, { color: palette.muted }]}>
-            {content.length}/500
-          </Text>
-
-          <AButton
-            onPress={() => {
-              close();
-              go("newEntry");
-            }}
-            style={styles.fullEntryLink}
-          >
-            <Ionicons name="create-outline" size={14} color={palette.primary} />
-            <Text
-              style={[styles.fullEntryLinkText, { color: palette.primary }]}
-            >
-              Write a full entry instead
-            </Text>
-          </AButton>
-
-          <View style={styles.actionRow}>
-            <AButton
-              onPress={close}
-              style={[
-                styles.secondaryButton,
-                { backgroundColor: palette.soft },
-              ]}
-            >
-              <Text style={[styles.buttonText, { color: palette.muted }]}>
-                Cancel
-              </Text>
-            </AButton>
-            <AButton
-              disabled={!content.trim() || saving}
-              onPress={save}
-              style={[
-                styles.primaryButton,
-                { backgroundColor: palette.primary },
-              ]}
-            >
-              <Ionicons name="paper-plane-outline" size={17} color="#fff" />
-              <Text style={styles.buttonTextWhite}>
-                {saving ? "Saving..." : "Save"}
-              </Text>
-            </AButton>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 function JournalHome({
   palette,
   journals,
@@ -1469,25 +1246,27 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
       (category: any) => category.id === activeCategory,
     ) || BACKGROUND_CATEGORIES[0];
 
+  const safePalette = palette || PINK;
+
   return (
     <View
       style={[
         styles.inlineBackgroundChooser,
-        { backgroundColor: palette.card, borderColor: palette.line },
+        { backgroundColor: safePalette.card, borderColor: safePalette.line },
       ]}
     >
       <View style={styles.row}>
         <IconBubble
           name="images-outline"
-          color={palette.primary}
-          bg={palette.soft}
+          color={safePalette.primary}
+          bg={safePalette.soft}
           size={42}
         />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cardSectionTitle, { color: palette.text }]}>
+          <Text style={[styles.cardSectionTitle, { color: safePalette.text }]}>
             Journal Background
           </Text>
-          <Text style={[styles.smallText, { color: palette.muted }]}>
+          <Text style={[styles.smallText, { color: safePalette.muted }]}>
             Pick one of the 8 pastel colors or your original patterns.
           </Text>
         </View>
@@ -1496,25 +1275,25 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
       <View
         style={[
           styles.backgroundModeRow,
-          { backgroundColor: palette.soft, marginTop: 12 },
+          { backgroundColor: safePalette.soft, marginTop: 12 },
         ]}
       >
         <AButton
           onPress={() => setMode("colors")}
           style={[
             styles.backgroundModeButton,
-            mode === "colors" && { backgroundColor: palette.card },
+            mode === "colors" && { backgroundColor: safePalette.card },
           ]}
         >
           <Ionicons
             name="color-palette-outline"
             size={17}
-            color={mode === "colors" ? palette.primary : palette.muted}
+            color={mode === "colors" ? safePalette.primary : safePalette.muted}
           />
           <Text
             style={[
               styles.backgroundModeText,
-              { color: mode === "colors" ? palette.primary : palette.muted },
+              { color: mode === "colors" ? safePalette.primary : safePalette.muted },
             ]}
           >
             Pastel Colors
@@ -1524,18 +1303,18 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
           onPress={() => setMode("patterns")}
           style={[
             styles.backgroundModeButton,
-            mode === "patterns" && { backgroundColor: palette.card },
+            mode === "patterns" && { backgroundColor: safePalette.card },
           ]}
         >
           <Ionicons
             name="images-outline"
             size={17}
-            color={mode === "patterns" ? palette.primary : palette.muted}
+            color={mode === "patterns" ? safePalette.primary : safePalette.muted}
           />
           <Text
             style={[
               styles.backgroundModeText,
-              { color: mode === "patterns" ? palette.primary : palette.muted },
+              { color: mode === "patterns" ? safePalette.primary : safePalette.muted },
             ]}
           >
             Patterns
@@ -1545,7 +1324,7 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
 
       {mode === "colors" ? (
         <>
-          <Text style={[styles.pickerSectionTitle, { color: palette.text }]}>
+          <Text style={[styles.pickerSectionTitle, { color: safePalette.text }]}>
             8 pastel colors
           </Text>
           <View style={styles.solidColorGrid}>
@@ -1559,7 +1338,7 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
                     styles.solidColorTile,
                     {
                       backgroundColor: item.color,
-                      borderColor: active ? palette.primary : "#FFFFFFAA",
+                      borderColor: active ? safePalette.primary : "#FFFFFFAA",
                       borderWidth: active ? 3 : 1,
                     },
                   ]}
@@ -1571,7 +1350,7 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
                     <View
                       style={[
                         styles.solidColorCheck,
-                        { backgroundColor: palette.primary },
+                        { backgroundColor: safePalette.primary },
                       ]}
                     >
                       <Ionicons name="checkmark" size={17} color="#fff" />
@@ -1584,7 +1363,7 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
         </>
       ) : (
         <>
-          <Text style={[styles.pickerSectionTitle, { color: palette.text }]}>
+          <Text style={[styles.pickerSectionTitle, { color: safePalette.text }]}>
             Your journal patterns
           </Text>
           <ScrollView
@@ -1601,13 +1380,13 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
                   style={[
                     styles.patternCategoryButton,
                     {
-                      backgroundColor: active ? palette.primary : palette.soft,
+                      backgroundColor: active ? safePalette.primary : safePalette.soft,
                     },
                   ]}
                 >
                   <Text
                     style={{
-                      color: active ? "#fff" : palette.text,
+                      color: active ? "#fff" : safePalette.text,
                       fontWeight: "800",
                       fontSize: 12,
                     }}
@@ -1629,7 +1408,7 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
                   style={[
                     styles.patternTile,
                     {
-                      borderColor: active ? palette.primary : palette.line,
+                      borderColor: active ? safePalette.primary : safePalette.line,
                       borderWidth: active ? 3 : 1,
                     },
                   ]}
@@ -1644,7 +1423,7 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
                       <View
                         style={[
                           styles.patternCheck,
-                          { backgroundColor: palette.primary },
+                          { backgroundColor: safePalette.primary },
                         ]}
                       >
                         <Ionicons name="checkmark" size={16} color="#fff" />
@@ -1666,15 +1445,15 @@ function BackgroundChooser({ selected, setSelected, palette }: any) {
       <View
         style={[
           styles.selectedBackgroundHint,
-          { backgroundColor: palette.soft },
+          { backgroundColor: safePalette.soft },
         ]}
       >
         <Ionicons
           name="checkmark-circle-outline"
           size={17}
-          color={palette.primary}
+          color={safePalette.primary}
         />
-        <Text style={[styles.smallText, { color: palette.muted, flex: 1 }]}>
+        <Text style={[styles.smallText, { color: safePalette.muted, flex: 1 }]}>
           Your selected background will be saved with this entry.
         </Text>
       </View>
@@ -3375,9 +3154,6 @@ export default function App() {
   const palette = usePalette(themeName);
 
   const reload = async () => {
-    // IMPORTANT: keep these SQLite reads sequential on Android.
-    // expo-sqlite can throw a native NullPointerException when several
-    // async statements are started on the same database handle at once.
     const p = await getProfile();
     const j = await getJournals();
     const t = await getTasks();
@@ -3415,10 +3191,6 @@ export default function App() {
       return;
     }
 
-    // ============================================================
-    // TASK MANAGER MODULE
-    // Connected to the CM's task-manager Expo Router screens.
-    // ============================================================
     if (target === "tasks") {
       router.push("/task-manager");
       return;
@@ -3434,9 +3206,6 @@ export default function App() {
       return;
     }
 
-    // ============================================================
-    // THRIVE INTERNAL SCREENS
-    // ============================================================
     setScreen(target as Screen);
   };
 
@@ -3746,15 +3515,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  newEntryTopButton: {
-    minHeight: 42,
-    borderRadius: 16,
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
   journalListCard: {
     width: "100%",
     minHeight: 104,
@@ -3909,12 +3669,6 @@ const styles = StyleSheet.create({
     borderRightColor: "transparent",
     borderBottomColor: "#FFFFFF33",
   },
-  journalComposer: {
-    borderRadius: 26,
-    borderWidth: 1,
-    padding: 17,
-    marginBottom: 13,
-  },
   quickReflectionToggle: {
     minHeight: 68,
     borderRadius: 20,
@@ -3932,12 +3686,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
     marginBottom: 4,
-  },
-  plusSmall: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
   },
   fieldLabel: {
     fontSize: 12,
@@ -3966,15 +3714,6 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontSize: 13, fontWeight: "900" },
   buttonTextWhite: { color: "#fff", fontSize: 13, fontWeight: "900" },
-  entryCountCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 18,
-  },
   emptyCard: {
     borderRadius: 25,
     borderWidth: 1,
@@ -3982,103 +3721,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
-  quickBackdrop: {
-    flex: 1,
-    backgroundColor: "#10233F88",
-    justifyContent: "flex-end",
-  },
-  quickModal: {
-    width: "100%",
-    maxHeight: "91%",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 18,
-  },
-  quickHandle: {
-    width: 42,
-    height: 4,
-    borderRadius: 3,
-    backgroundColor: "#CBD4DF",
-    alignSelf: "center",
-    marginBottom: 10,
-  },
-  quickTitleRow: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  quickTitle: { fontSize: 16, fontWeight: "900" },
-  quickClose: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quickSectionLabel: {
-    fontSize: 11,
-    fontWeight: "900",
-    marginTop: 12,
-    marginBottom: 7,
-  },
-  quickGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  quickChoice: {
-    width: "48.3%",
-    minHeight: 62,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  quickChoiceText: { flex: 1, fontSize: 9, lineHeight: 13, fontWeight: "700" },
-  quickInput: {
-    minHeight: 76,
-    borderRadius: 15,
-    borderWidth: 1,
-    padding: 11,
-    fontSize: 11,
-  },
-  quickCounter: { textAlign: "right", fontSize: 8, marginTop: 3 },
-  fullEntryLink: {
-    height: 30,
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-  },
-  fullEntryLinkText: { fontSize: 10, fontWeight: "900" },
-  entryCard: {
-    width: "100%",
-    marginBottom: 14,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  entryImage: { width: "100%", minHeight: 210, justifyContent: "flex-end" },
-  entryShade: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "#1E4F7A30",
-  },
-  entryGlass: {
-    margin: 14,
-    borderRadius: 20,
-    padding: 15,
-    borderWidth: 1,
-    minHeight: 118,
-  },
-  entryTitle: { fontSize: 17, fontWeight: "900", marginTop: 7 },
   searchBox: {
     borderRadius: 18,
     borderWidth: 1,
@@ -4197,15 +3839,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 7,
   },
-  backgroundSelector: {
-    borderRadius: 20,
-    borderWidth: 1,
-    minHeight: 82,
-    padding: 9,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
   solidColorGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -4318,7 +3951,6 @@ const styles = StyleSheet.create({
   },
   affirmationNumberText: { fontWeight: "900", fontSize: 12 },
   affirmationText: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  selectorImage: { width: 64, height: 64, borderRadius: 16 },
   photoBox: {
     marginTop: 12,
     minHeight: 74,
@@ -4359,56 +3991,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   moodLabel: { fontSize: 9, marginTop: 4 },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "#0A315655",
-    justifyContent: "flex-end",
-  },
-  bgModal: {
-    maxHeight: "88%",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 17,
-  },
   modalTitle: { fontSize: 19, fontWeight: "900" },
   closeButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: "#EEF6FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bgGrid: {
-    width: "100%",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 12,
-    paddingBottom: 8,
-  },
-  bgTile: {
-    width: "31.5%",
-    aspectRatio: 1,
-    borderRadius: 18,
-    overflow: "hidden",
-    position: "relative",
-  },
-  bgTileImage: { width: "100%", height: "100%" },
-  checkOverlay: {
-    position: "absolute",
-    top: 5,
-    right: 5,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -4609,12 +4197,6 @@ const styles = StyleSheet.create({
     gap: 9,
     marginTop: 9,
   },
-  explorePattern: {
-    width: "31.5%",
-    aspectRatio: 1,
-    borderRadius: 18,
-    overflow: "hidden",
-  },
   explorePatternImage: { width: "100%", height: "100%" },
   addTaskCard: {
     borderRadius: 22,
@@ -4681,7 +4263,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   profileName: { fontSize: 24, fontWeight: "900", marginTop: 10 },
-  themeRow: { flexDirection: "row", gap: 10 },
   themeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
