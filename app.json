@@ -8,11 +8,18 @@
     "scheme": "thrive",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "plugins": ["expo-router", "expo-sqlite"],
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-font",
+      "expo-image",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-web-browser"
+    ],
     "android": {
       "package": "com.thrive.app"
     },
-
     "ios": {
       "supportsTablet": true
     }

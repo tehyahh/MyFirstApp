@@ -1,7 +1,6 @@
-import React from 'react';
-import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../constants/ThemeContext';
+import { Ionicons } from "@expo/vector-icons";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 
 // Shared top header used across screens: avatar on the left,
 // search / dark-mode toggle on the right.
@@ -12,7 +11,7 @@ export default function AppHeader() {
     <View style={styles.header}>
       <Image
         // Replace with your own avatar asset, e.g. require('../assets/avatar.png')
-        source={{ uri: 'https://placehold.co/72x72/f5c6d0/000000?text=🐹' }}
+        source={{ uri: "https://placehold.co/72x72/f5c6d0/000000?text=🐹" }}
         style={styles.avatar}
       />
 
@@ -29,7 +28,7 @@ export default function AppHeader() {
           onPress={toggleTheme}
         >
           <Ionicons
-            name={isDark ? 'sunny' : 'moon'}
+            name={isDark ? "sunny" : "moon"}
             size={18}
             color={colors.icon}
           />
@@ -41,9 +40,9 @@ export default function AppHeader() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   avatar: {
@@ -52,14 +51,14 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
   headerIcons: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   iconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 10,
   },
 });

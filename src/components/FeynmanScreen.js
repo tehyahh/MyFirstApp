@@ -18,7 +18,7 @@ import {
   createStudyNote,
   updateStudyNote,
   deleteStudyNote,
-} from '../services/studyService';
+} from '../app/Services/studyService';
 
 // How long to wait after the user stops typing before writing to SQLite.
 // Keeps typing responsive without hitting the DB on every keystroke.
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 60,
+    paddingBottom: 130,
   },
   backRow: {
     flexDirection: 'row',

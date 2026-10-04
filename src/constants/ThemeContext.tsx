@@ -79,6 +79,9 @@ const BLUE_THEME: AppTheme = {
 
 type ThemeContextValue = {
   theme: AppTheme;
+  // Alias used by older components: `const { colors } = useTheme()`.
+  // Also carries legacy key names (card, textSoft, muted) from theme.ts.
+  colors: AppTheme & { card: string; textSoft: string; muted: string };
   themeName: AppThemeName;
   isPink: boolean;
   isBlue: boolean;
@@ -115,6 +118,12 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const value = useMemo<ThemeContextValue>(() => {
     return {
       theme,
+      colors: {
+        ...theme,
+        card: theme.surface,
+        textSoft: theme.textSecondary,
+        muted: theme.textMuted,
+      },
       themeName,
       isPink: themeName === 'pink',
       isBlue: themeName === 'blue',

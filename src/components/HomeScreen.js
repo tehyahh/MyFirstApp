@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import AppHeader from './AppHeader';
 import MethodCard from './MethodCard';
-import BottomNav from './BottomNav';
-import { useTheme } from '../constants/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 
 // Study techniques shown on the home screen.
 // `screen` must match a case in App.js's navigation switch for the card to be tappable.
@@ -12,7 +11,9 @@ const STUDY_METHODS = [
   { id: '2', title: 'Pomodoro Method', screen: 'pomodoro' },
 ];
 
-export default function HomeScreen({ activeTab, onTabPress, onNavigate }) {
+// The bottom navigation bar is rendered by index.tsx, so this screen only
+// needs `onNavigate` for the technique cards.
+export default function HomeScreen({ onNavigate }) {
   const { colors } = useTheme();
 
   return (
@@ -44,7 +45,6 @@ export default function HomeScreen({ activeTab, onTabPress, onNavigate }) {
         </View>
       </ScrollView>
 
-      <BottomNav activeTab={activeTab} onTabPress={onTabPress} />
     </View>
   );
 }
