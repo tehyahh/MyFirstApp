@@ -1,20 +1,22 @@
-import React from 'react';
+import React from "react";
 
 import {
   Pressable,
   StyleSheet,
+  Text,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
 
-import { useTheme } from './ThemeContent';
+import { useTheme } from "./ThemeContent";
 
 type TabKey =
-  | 'home'
-  | 'study'
-  | 'notifications'
-  | 'profile';
+  | "dashboard"
+  | "journal"
+  | "tasks"
+  | "study"
+  | "profile";
 
 type BottomNavigationProps = {
   activeTab: TabKey;
@@ -28,28 +30,34 @@ const tabs: {
   activeIcon: keyof typeof Ionicons.glyphMap;
 }[] = [
   {
-    key: 'home',
-    label: 'Home',
-    icon: 'home-outline',
-    activeIcon: 'home',
+    key: "dashboard",
+    label: "Dashboard",
+    icon: "home-outline",
+    activeIcon: "home",
   },
   {
-    key: 'study',
-    label: 'Study',
-    icon: 'book-outline',
-    activeIcon: 'book',
+    key: "journal",
+    label: "Journal",
+    icon: "book-outline",
+    activeIcon: "book",
   },
   {
-    key: 'notifications',
-    label: 'Notifications',
-    icon: 'notifications-outline',
-    activeIcon: 'notifications',
+    key: "tasks",
+    label: "Tasks",
+    icon: "checkmark-outline",
+    activeIcon: "checkmark",
   },
   {
-    key: 'profile',
-    label: 'Profile',
-    icon: 'person-outline',
-    activeIcon: 'person',
+    key: "study",
+    label: "Study",
+    icon: "key-outline",
+    activeIcon: "key",
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    icon: "person-outline",
+    activeIcon: "person",
   },
 ];
 
@@ -68,39 +76,37 @@ export default function BottomNavigation({
       <View
         style={[
           styles.navigationBar,
-          darkMode &&
-            styles.navigationBarDark,
+          darkMode && styles.navigationBarDark,
         ]}
       >
         {tabs.map((tab) => {
-          const isActive =
-            activeTab === tab.key;
+          const isActive = activeTab === tab.key;
 
           return (
             <Pressable
               key={tab.key}
               style={styles.tabButton}
-              onPress={() =>
-                onTabPress?.(tab.key)
-              }
+              onPress={() => onTabPress?.(tab.key)}
               accessibilityRole="tab"
-              accessibilityLabel={
-                tab.label
-              }
+              accessibilityLabel={tab.label}
               accessibilityState={{
                 selected: isActive,
               }}
               android_ripple={{
                 color: darkMode
-                  ? '#263B46'
-                  : '#DDF3FF',
+                  ? "#263B46"
+                  : "#DDF3FF",
               }}
             >
+              {/* ICON */}
+
               <View
                 style={[
                   styles.iconContainer,
+
                   isActive &&
                     styles.activeIconContainer,
+
                   isActive &&
                     darkMode &&
                     styles.activeIconContainerDark,
@@ -116,14 +122,35 @@ export default function BottomNavigation({
                   color={
                     isActive
                       ? darkMode
-                        ? '#BDE7F8'
-                        : '#2876A8'
+                        ? "#BDE7F8"
+                        : "#2876A8"
                       : darkMode
-                        ? '#9CA3AF'
-                        : '#555555'
+                        ? "#9CA3AF"
+                        : "#555555"
                   }
                 />
               </View>
+
+              {/* TEXT */}
+
+              <Text
+                style={[
+                  styles.tabLabel,
+
+                  isActive &&
+                    styles.tabLabelActive,
+
+                  isActive &&
+                    darkMode &&
+                    styles.tabLabelActiveDark,
+
+                  !isActive &&
+                    darkMode &&
+                    styles.tabLabelDark,
+                ]}
+              >
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -134,21 +161,22 @@ export default function BottomNavigation({
 
 const styles = StyleSheet.create({
   navigationWrapper: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     right: 16,
     bottom: 12,
   },
 
   navigationBar: {
-    height: 72,
+    height: 86,
     borderRadius: 38,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    backgroundColor: "#FFFFFF",
 
-    shadowColor: '#000000',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+
+    shadowColor: "#000000",
     shadowOffset: {
       width: 0,
       height: 5,
@@ -156,33 +184,63 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 8,
+
+    paddingHorizontal: 4,
   },
 
   navigationBarDark: {
-    backgroundColor: '#111827',
+    backgroundColor: "#111827",
   },
 
   tabButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 70,
+    height: 76,
+
+    borderRadius: 28,
+
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+
+    borderRadius: 24,
+
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   activeIconContainer: {
-    backgroundColor: '#DDF3FF',
+    backgroundColor: "rgba(66, 153, 225, 0.22)",
   },
 
   activeIconContainerDark: {
-    backgroundColor: '#24485A',
+    backgroundColor: "rgba(124, 199, 231, 0.20)",
+  },
+
+  tabLabel: {
+    marginTop: 2,
+
+    fontSize: 11,
+    fontWeight: "600",
+
+    color: "#777777",
+
+    textAlign: "center",
+  },
+
+  tabLabelActive: {
+    color: "#2876A8",
+    fontWeight: "700",
+  },
+
+  tabLabelDark: {
+    color: "#9CA3AF",
+  },
+
+  tabLabelActiveDark: {
+    color: "#BDE7F8",
   },
 });

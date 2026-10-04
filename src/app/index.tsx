@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -3345,6 +3345,33 @@ export default function App() {
   const [notes, setNotes] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState(false);
+
+  const { screen: routeScreen } = useLocalSearchParams<{ screen?: string }>();
+
+  useEffect(() => {
+    const target = Array.isArray(routeScreen) ? routeScreen[0] : routeScreen;
+
+    const validScreens: Screen[] = [
+      "dashboard",
+      "journal",
+      "explore",
+      "newEntry",
+      "readEntry",
+      "editEntry",
+      "tasks",
+      "study",
+      "feynman",
+      "pomodoro",
+      "goals",
+      "leisure",
+      "profile",
+    ];
+
+    if (target && validScreens.includes(target as Screen)) {
+      setScreen(target as Screen);
+    }
+  }, [routeScreen]);
+
   const palette = usePalette(themeName);
 
   const reload = async () => {

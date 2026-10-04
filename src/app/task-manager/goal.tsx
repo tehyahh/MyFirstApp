@@ -28,6 +28,7 @@ import {
 } from '../Services/goalService';
 
 import { initializeDatabase } from '../../database/db';
+import { useTheme } from '../../components/ThemeContent';
 
 type GoalStatus = 'Active' | 'Paused' | 'Completed';
 type GoalFilter = 'All' | 'Active' | 'Paused' | 'Completed';
@@ -110,31 +111,33 @@ function getProgressValue(value: string) {
 export default function GoalScreen() {
   const router = useRouter();
 
+  const { darkMode } = useTheme();
+
   const today = new Date();
   const todayString = formatDate(today);
 
   // TEMPORARY STORAGE
   // This will be replaced with SQLite during the database phase.
   const [goals, setGoals] = useState<Goal[]>([]);
-  
+
   useEffect(() => {
-  const loadGoals = async () => {
-    try {
-      await initializeDatabase();
+    const loadGoals = async () => {
+      try {
+        await initializeDatabase();
 
-      const data = await getGoals();
+        const data = await getGoals();
 
-      setGoals(data);
-    } catch (error) {
-      console.error(
-        'Failed to load goals:',
-        error
-      );
-    }
-  };
+        setGoals(data);
+      } catch (error) {
+        console.error(
+          'Failed to load goals:',
+          error
+        );
+      }
+    };
 
-  loadGoals();
-}, []);
+    loadGoals();
+  }, []);
 
   const [activeFilter, setActiveFilter] =
     useState<GoalFilter>('All');
@@ -226,125 +229,125 @@ export default function GoalScreen() {
     setFormVisible(true);
   }
 
- async function saveGoal() {
-  if (!title.trim()) return;
-  if (!targetDate) return;
+  async function saveGoal() {
+    if (!title.trim()) return;
+    if (!targetDate) return;
 
-  try {
-    const finalProgress = Math.max(
-      0,
-      Math.min(100, progress),
-    );
-
-    if (editingGoal) {
-      const updatedGoal: Goal = {
-        ...editingGoal,
-        title: title.trim(),
-        category,
-        description: description.trim(),
-        targetDate,
-        progress: finalProgress,
-        status:
-          finalProgress >= 100
-            ? 'Completed'
-            : editingGoal.status ===
-                'Completed'
-              ? 'Active'
-              : editingGoal.status,
-      };
-
-      await updateGoal(updatedGoal);
-
-      setGoals((currentGoals) =>
-        currentGoals.map((goal) =>
-          goal.id === editingGoal.id
-            ? updatedGoal
-            : goal,
-        ),
+    try {
+      const finalProgress = Math.max(
+        0,
+        Math.min(100, progress),
       );
-    } else {
-      const newGoal: Goal = {
-        id: Date.now().toString(),
-        title: title.trim(),
-        category,
-        description: description.trim(),
-        targetDate,
-        progress: finalProgress,
-        status:
-          finalProgress >= 100
-            ? 'Completed'
-            : 'Active',
-      };
 
-      await createGoal(newGoal);
+      if (editingGoal) {
+        const updatedGoal: Goal = {
+          ...editingGoal,
+          title: title.trim(),
+          category,
+          description: description.trim(),
+          targetDate,
+          progress: finalProgress,
+          status:
+            finalProgress >= 100
+              ? 'Completed'
+              : editingGoal.status ===
+                  'Completed'
+                ? 'Active'
+                : editingGoal.status,
+        };
 
-      setGoals((currentGoals) => [
-        ...currentGoals,
-        newGoal,
-      ]);
+        await updateGoal(updatedGoal);
+
+        setGoals((currentGoals) =>
+          currentGoals.map((goal) =>
+            goal.id === editingGoal.id
+              ? updatedGoal
+              : goal,
+          ),
+        );
+      } else {
+        const newGoal: Goal = {
+          id: Date.now().toString(),
+          title: title.trim(),
+          category,
+          description: description.trim(),
+          targetDate,
+          progress: finalProgress,
+          status:
+            finalProgress >= 100
+              ? 'Completed'
+              : 'Active',
+        };
+
+        await createGoal(newGoal);
+
+        setGoals((currentGoals) => [
+          ...currentGoals,
+          newGoal,
+        ]);
+      }
+
+      closeForm();
+    } catch (error) {
+      console.error(
+        'Failed to save goal:',
+        error,
+      );
     }
-
-    closeForm();
-  } catch (error) {
-    console.error(
-      'Failed to save goal:',
-      error,
-    );
   }
-}
 
   // --------------------------------------------------
   // GOAL ACTIONS
   // --------------------------------------------------
 
-async function updateGoalStatus(
-  id: string,
-  status: GoalStatus,
-) {
-  try {
-    await updateGoalStatusInDb(
-      id,
-      status,
-    );
+  async function updateGoalStatus(
+    id: string,
+    status: GoalStatus,
+  ) {
+    try {
+      await updateGoalStatusInDb(
+        id,
+        status,
+      );
 
-    setGoals((currentGoals) =>
-      currentGoals.map((goal) =>
-        goal.id === id
-          ? {
-              ...goal,
-              status,
-            }
-          : goal,
-      ),
-    );
+      setGoals((currentGoals) =>
+        currentGoals.map((goal) =>
+          goal.id === id
+            ? {
+                ...goal,
+                status,
+              }
+            : goal,
+        ),
+      );
 
-    setMenuGoal(null);
-  } catch (error) {
-    console.error(
-      'Failed to update goal status:',
-      error,
-    );
+      setMenuGoal(null);
+    } catch (error) {
+      console.error(
+        'Failed to update goal status:',
+        error,
+      );
+    }
   }
-}
 
-async function deleteGoal(id: string) {
-  try {
-    await deleteGoalFromDb(id);
+  async function deleteGoal(id: string) {
+    try {
+      await deleteGoalFromDb(id);
 
-    setGoals((currentGoals) =>
-      currentGoals.filter(
-        (goal) => goal.id !== id,
-      ),
-    );
+      setGoals((currentGoals) =>
+        currentGoals.filter(
+          (goal) => goal.id !== id,
+        ),
+      );
 
-    setMenuGoal(null);
-  } catch (error) {
-    console.error(
-      'Failed to delete goal:',
-      error,
-    );
+      setMenuGoal(null);
+    } catch (error) {
+      console.error(
+        'Failed to delete goal:',
+        error,
+      );
+    }
   }
-}
 
   function openProgressEditor(goal: Goal) {
     setMenuGoal(null);
@@ -364,57 +367,57 @@ async function deleteGoal(id: string) {
     setProgressVisible(true);
   }
 
-async function saveProgress() {
-  if (!progressGoal) return;
+  async function saveProgress() {
+    if (!progressGoal) return;
 
-  try {
-    const finalProgress = Math.max(
-      0,
-      Math.min(100, newProgress),
-    );
+    try {
+      const finalProgress = Math.max(
+        0,
+        Math.min(100, newProgress),
+      );
 
-    await updateGoalProgressInDb(
-      progressGoal.id,
-      finalProgress,
-    );
-
-    const newStatus =
-      finalProgress >= 100
-        ? 'Completed'
-        : progressGoal.status ===
-            'Completed'
-          ? 'Active'
-          : progressGoal.status;
-
-    if (newStatus !== progressGoal.status) {
-      await updateGoalStatusInDb(
+      await updateGoalProgressInDb(
         progressGoal.id,
-        newStatus,
+        finalProgress,
+      );
+
+      const newStatus =
+        finalProgress >= 100
+          ? 'Completed'
+          : progressGoal.status ===
+              'Completed'
+            ? 'Active'
+            : progressGoal.status;
+
+      if (newStatus !== progressGoal.status) {
+        await updateGoalStatusInDb(
+          progressGoal.id,
+          newStatus,
+        );
+      }
+
+      setGoals((currentGoals) =>
+        currentGoals.map((goal) =>
+          goal.id === progressGoal.id
+            ? {
+                ...goal,
+                progress: finalProgress,
+                status: newStatus,
+              }
+            : goal,
+        ),
+      );
+
+      setProgressVisible(false);
+      setProgressGoal(null);
+      setCustomNewProgress('');
+    } catch (error) {
+      console.error(
+        'Failed to update goal progress:',
+        error,
       );
     }
-
-    setGoals((currentGoals) =>
-      currentGoals.map((goal) =>
-        goal.id === progressGoal.id
-          ? {
-              ...goal,
-              progress: finalProgress,
-              status: newStatus,
-            }
-          : goal,
-      ),
-    );
-
-    setProgressVisible(false);
-    setProgressGoal(null);
-    setCustomNewProgress('');
-  } catch (error) {
-    console.error(
-      'Failed to update goal progress:',
-      error,
-    );
   }
-}
 
   // --------------------------------------------------
   // SEARCH + FILTER
@@ -639,8 +642,18 @@ async function saveProgress() {
   // --------------------------------------------------
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.screen}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        darkMode && styles.safeAreaDark,
+      ]}
+    >
+      <View
+        style={[
+          styles.screen,
+          darkMode && styles.screenDark,
+        ]}
+      >
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
@@ -653,20 +666,42 @@ async function saveProgress() {
 
           <View style={styles.header}>
             <Pressable
-              style={styles.backButton}
+              style={[
+                styles.backButton,
+                darkMode &&
+                  styles.backButtonDark,
+              ]}
               onPress={() => router.back()}
             >
-              <Text style={styles.backText}>
+              <Text
+                style={[
+                  styles.backText,
+                  darkMode &&
+                    styles.backTextDark,
+                ]}
+              >
                 ‹
               </Text>
             </Pressable>
 
             <View style={styles.headerTitleArea}>
-              <Text style={styles.headerTitle}>
+              <Text
+                style={[
+                  styles.headerTitle,
+                  darkMode &&
+                    styles.headerTitleDark,
+                ]}
+              >
                 Goals
               </Text>
 
-              <Text style={styles.headerSubtitle}>
+              <Text
+                style={[
+                  styles.headerSubtitle,
+                  darkMode &&
+                    styles.headerSubtitleDark,
+                ]}
+              >
                 Build habits and work toward
                 what matters.
               </Text>
@@ -674,23 +709,43 @@ async function saveProgress() {
 
             <View style={styles.headerActions}>
               <Pressable
-                style={styles.iconButton}
+                style={[
+                  styles.iconButton,
+                  darkMode &&
+                    styles.iconButtonDark,
+                ]}
                 onPress={() =>
                   setSearchVisible(
                     !searchVisible,
                   )
                 }
               >
-                <Text style={styles.iconText}>
+                <Text
+                  style={[
+                    styles.iconText,
+                    darkMode &&
+                      styles.iconTextDark,
+                  ]}
+                >
                   ⌕
                 </Text>
               </Pressable>
 
               <Pressable
-                style={styles.iconButton}
+                style={[
+                  styles.iconButton,
+                  darkMode &&
+                    styles.iconButtonDark,
+                ]}
                 onPress={openGoalDateView}
               >
-                <Text style={styles.iconText}>
+                <Text
+                  style={[
+                    styles.iconText,
+                    darkMode &&
+                      styles.iconTextDark,
+                  ]}
+                >
                   ▣
                 </Text>
               </Pressable>
@@ -701,7 +756,11 @@ async function saveProgress() {
 
           {searchVisible && (
             <Pressable
-              style={styles.searchContainer}
+              style={[
+                styles.searchContainer,
+                darkMode &&
+                  styles.searchContainerDark,
+              ]}
               onPress={(event) =>
                 event.stopPropagation()
               }
@@ -710,8 +769,16 @@ async function saveProgress() {
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholder="Search goals..."
-                placeholderTextColor="#888"
-                style={styles.searchInput}
+                placeholderTextColor={
+                  darkMode
+                    ? '#9CA3AF'
+                    : '#888'
+                }
+                style={[
+                  styles.searchInput,
+                  darkMode &&
+                    styles.searchInputDark,
+                ]}
                 autoFocus
               />
 
@@ -722,7 +789,11 @@ async function saveProgress() {
                   }
                 >
                   <Text
-                    style={styles.clearSearch}
+                    style={[
+                      styles.clearSearch,
+                      darkMode &&
+                        styles.clearSearchDark,
+                    ]}
                   >
                     ×
                   </Text>
@@ -735,11 +806,23 @@ async function saveProgress() {
 
           <View style={styles.titleSection}>
             <View style={styles.titleArea}>
-              <Text style={styles.pageTitle}>
+              <Text
+                style={[
+                  styles.pageTitle,
+                  darkMode &&
+                    styles.pageTitleDark,
+                ]}
+              >
                 Goal
               </Text>
 
-              <Text style={styles.summaryText}>
+              <Text
+                style={[
+                  styles.summaryText,
+                  darkMode &&
+                    styles.summaryTextDark,
+                ]}
+              >
                 {activeCount} active ·{' '}
                 {completedCount} completed ·{' '}
                 {pausedCount} paused
@@ -747,14 +830,30 @@ async function saveProgress() {
             </View>
 
             <Pressable
-              style={styles.newGoalButton}
+              style={[
+                styles.newGoalButton,
+                darkMode &&
+                  styles.newGoalButtonDark,
+              ]}
               onPress={openNewGoal}
             >
-              <Text style={styles.plusText}>
+              <Text
+                style={[
+                  styles.plusText,
+                  darkMode &&
+                    styles.plusTextDark,
+                ]}
+              >
                 ＋
               </Text>
 
-              <Text style={styles.newGoalText}>
+              <Text
+                style={[
+                  styles.newGoalText,
+                  darkMode &&
+                    styles.newGoalTextDark,
+                ]}
+              >
                 New Goal
               </Text>
             </Pressable>
@@ -763,16 +862,30 @@ async function saveProgress() {
           {/* DATE VIEW */}
 
           {selectedCalendarDate && (
-            <View style={styles.dateView}>
+            <View
+              style={[
+                styles.dateView,
+                darkMode &&
+                  styles.dateViewDark,
+              ]}
+            >
               <View>
                 <Text
-                  style={styles.dateViewLabel}
+                  style={[
+                    styles.dateViewLabel,
+                    darkMode &&
+                      styles.dateViewLabelDark,
+                  ]}
                 >
                   DATE VIEW
                 </Text>
 
                 <Text
-                  style={styles.dateViewDate}
+                  style={[
+                    styles.dateViewDate,
+                    darkMode &&
+                      styles.dateViewDateDark,
+                  ]}
                 >
                   {displayDate(
                     selectedCalendarDate,
@@ -781,13 +894,21 @@ async function saveProgress() {
               </View>
 
               <Pressable
-                style={styles.clearDateButton}
+                style={[
+                  styles.clearDateButton,
+                  darkMode &&
+                    styles.clearDateButtonDark,
+                ]}
                 onPress={() =>
                   setSelectedCalendarDate('')
                 }
               >
                 <Text
-                  style={styles.clearDateText}
+                  style={[
+                    styles.clearDateText,
+                    darkMode &&
+                      styles.clearDateTextDark,
+                  ]}
                 >
                   Clear
                 </Text>
@@ -803,7 +924,11 @@ async function saveProgress() {
             >
               <View>
                 <Text
-                  style={styles.dateHeadingTitle}
+                  style={[
+                    styles.dateHeadingTitle,
+                    darkMode &&
+                      styles.dateHeadingTitleDark,
+                  ]}
                 >
                   {displayDate(
                     selectedCalendarDate,
@@ -811,15 +936,29 @@ async function saveProgress() {
                 </Text>
 
                 <Text
-                  style={styles.dateHeadingSubtitle}
+                  style={[
+                    styles.dateHeadingSubtitle,
+                    darkMode &&
+                      styles.dateHeadingSubtitleDark,
+                  ]}
                 >
                   Goals for this date
                 </Text>
               </View>
 
-              <View style={styles.dateCount}>
+              <View
+                style={[
+                  styles.dateCount,
+                  darkMode &&
+                    styles.dateCountDark,
+                ]}
+              >
                 <Text
-                  style={styles.dateCountText}
+                  style={[
+                    styles.dateCountText,
+                    darkMode &&
+                      styles.dateCountTextDark,
+                  ]}
                 >
                   {filteredGoals.length}
                 </Text>
@@ -884,13 +1023,27 @@ async function saveProgress() {
 
           <View style={styles.goalList}>
             {filteredGoals.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>
+              <View
+                style={[
+                  styles.emptyState,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.emptyIcon,
+                    darkMode &&
+                      styles.emptyIconDark,
+                  ]}
+                >
                   ✓
                 </Text>
 
                 <Text
-                  style={styles.emptyTitle}
+                  style={[
+                    styles.emptyTitle,
+                    darkMode &&
+                      styles.emptyTitleDark,
+                  ]}
                 >
                   {selectedCalendarDate
                     ? 'No goals on this date'
@@ -898,7 +1051,11 @@ async function saveProgress() {
                 </Text>
 
                 <Text
-                  style={styles.emptySubtitle}
+                  style={[
+                    styles.emptySubtitle,
+                    darkMode &&
+                      styles.emptySubtitleDark,
+                  ]}
                 >
                   {selectedCalendarDate
                     ? 'There are no goals recorded for this date.'
@@ -907,13 +1064,19 @@ async function saveProgress() {
 
                 {!selectedCalendarDate && (
                   <Pressable
-                    style={styles.emptyButton}
+                    style={[
+                      styles.emptyButton,
+                      darkMode &&
+                        styles.emptyButtonDark,
+                    ]}
                     onPress={openNewGoal}
                   >
                     <Text
-                      style={
-                        styles.emptyButtonText
-                      }
+                      style={[
+                        styles.emptyButtonText,
+                        darkMode &&
+                          styles.emptyButtonTextDark,
+                      ]}
                     >
                       ＋ Create Goal
                     </Text>
@@ -969,17 +1132,31 @@ async function saveProgress() {
           }
         >
           <Pressable
-            style={styles.menuCard}
+            style={[
+              styles.menuCard,
+              darkMode &&
+                styles.menuCardDark,
+            ]}
             onPress={(event) =>
               event.stopPropagation()
             }
           >
-            <Text style={styles.menuTitle}>
+            <Text
+              style={[
+                styles.menuTitle,
+                darkMode &&
+                  styles.menuTitleDark,
+              ]}
+            >
               Goal Options
             </Text>
 
             <Pressable
-              style={styles.menuItem}
+              style={[
+                styles.menuItem,
+                darkMode &&
+                  styles.menuItemDark,
+              ]}
               onPress={() => {
                 if (menuGoal) {
                   openEditGoal(
@@ -989,14 +1166,22 @@ async function saveProgress() {
               }}
             >
               <Text
-                style={styles.menuItemText}
+                style={[
+                  styles.menuItemText,
+                  darkMode &&
+                    styles.menuItemTextDark,
+                ]}
               >
                 ✏️ Edit Goal
               </Text>
             </Pressable>
 
             <Pressable
-              style={styles.menuItem}
+              style={[
+                styles.menuItem,
+                darkMode &&
+                  styles.menuItemDark,
+              ]}
               onPress={() => {
                 if (menuGoal) {
                   openProgressEditor(
@@ -1006,7 +1191,11 @@ async function saveProgress() {
               }}
             >
               <Text
-                style={styles.menuItemText}
+                style={[
+                  styles.menuItemText,
+                  darkMode &&
+                    styles.menuItemTextDark,
+                ]}
               >
                 📈 Update Progress
               </Text>
@@ -1015,7 +1204,11 @@ async function saveProgress() {
             {menuGoal?.status ===
               'Active' && (
               <Pressable
-                style={styles.menuItem}
+                style={[
+                  styles.menuItem,
+                  darkMode &&
+                    styles.menuItemDark,
+                ]}
                 onPress={() => {
                   if (menuGoal) {
                     updateGoalStatus(
@@ -1026,9 +1219,11 @@ async function saveProgress() {
                 }}
               >
                 <Text
-                  style={
-                    styles.menuItemText
-                  }
+                  style={[
+                    styles.menuItemText,
+                    darkMode &&
+                      styles.menuItemTextDark,
+                  ]}
                 >
                   ⏸ Pause Goal
                 </Text>
@@ -1038,7 +1233,11 @@ async function saveProgress() {
             {menuGoal?.status ===
               'Paused' && (
               <Pressable
-                style={styles.menuItem}
+                style={[
+                  styles.menuItem,
+                  darkMode &&
+                    styles.menuItemDark,
+                ]}
                 onPress={() => {
                   if (menuGoal) {
                     updateGoalStatus(
@@ -1049,9 +1248,11 @@ async function saveProgress() {
                 }}
               >
                 <Text
-                  style={
-                    styles.menuItemText
-                  }
+                  style={[
+                    styles.menuItemText,
+                    darkMode &&
+                      styles.menuItemTextDark,
+                  ]}
                 >
                   ▶️ Resume Goal
                 </Text>
@@ -1061,46 +1262,52 @@ async function saveProgress() {
             {menuGoal?.status !==
               'Completed' && (
               <Pressable
-                style={styles.menuItem}
-              onPress={async () => {
-  if (!menuGoal) return;
+                style={[
+                  styles.menuItem,
+                  darkMode &&
+                    styles.menuItemDark,
+                ]}
+                onPress={async () => {
+                  if (!menuGoal) return;
 
-  try {
-    await updateGoalProgressInDb(
-      menuGoal.id,
-      100,
-    );
+                  try {
+                    await updateGoalProgressInDb(
+                      menuGoal.id,
+                      100,
+                    );
 
-    await updateGoalStatusInDb(
-      menuGoal.id,
-      'Completed',
-    );
+                    await updateGoalStatusInDb(
+                      menuGoal.id,
+                      'Completed',
+                    );
 
-    setGoals((currentGoals) =>
-      currentGoals.map((goal) =>
-        goal.id === menuGoal.id
-          ? {
-              ...goal,
-              progress: 100,
-              status: 'Completed',
-            }
-          : goal,
-      ),
-    );
+                    setGoals((currentGoals) =>
+                      currentGoals.map((goal) =>
+                        goal.id === menuGoal.id
+                          ? {
+                              ...goal,
+                              progress: 100,
+                              status: 'Completed',
+                            }
+                          : goal,
+                      ),
+                    );
 
-    setMenuGoal(null);
-  } catch (error) {
-    console.error(
-      'Failed to complete goal:',
-      error,
-    );
-  }
-}}
+                    setMenuGoal(null);
+                  } catch (error) {
+                    console.error(
+                      'Failed to complete goal:',
+                      error,
+                    );
+                  }
+                }}
               >
                 <Text
-                  style={
-                    styles.menuItemText
-                  }
+                  style={[
+                    styles.menuItemText,
+                    darkMode &&
+                      styles.menuItemTextDark,
+                  ]}
                 >
                   ✓ Complete Goal
                 </Text>
@@ -1108,7 +1315,11 @@ async function saveProgress() {
             )}
 
             <Pressable
-              style={styles.menuItem}
+              style={[
+                styles.menuItem,
+                darkMode &&
+                  styles.menuItemDark,
+              ]}
               onPress={() => {
                 if (menuGoal) {
                   deleteGoal(
@@ -1117,19 +1328,33 @@ async function saveProgress() {
                 }
               }}
             >
-              <Text style={styles.deleteText}>
+              <Text
+                style={[
+                  styles.deleteText,
+                  darkMode &&
+                    styles.deleteTextDark,
+                ]}
+              >
                 🗑️ Delete Goal
               </Text>
             </Pressable>
 
             <Pressable
-              style={styles.cancelMenuButton}
+              style={[
+                styles.cancelMenuButton,
+                darkMode &&
+                  styles.cancelMenuButtonDark,
+              ]}
               onPress={() =>
                 setMenuGoal(null)
               }
             >
               <Text
-                style={styles.cancelMenuText}
+                style={[
+                  styles.cancelMenuText,
+                  darkMode &&
+                    styles.cancelMenuTextDark,
+                ]}
               >
                 Cancel
               </Text>
@@ -1161,24 +1386,40 @@ async function saveProgress() {
               }
               keyboardShouldPersistTaps="handled"
             >
-              <View style={styles.formCard}>
+              <View
+                style={[
+                  styles.formCard,
+                  darkMode &&
+                    styles.formCardDark,
+                ]}
+              >
                 <View style={styles.formHeader}>
-                  <Text style={styles.formTitle}>
+                  <Text
+                    style={[
+                      styles.formTitle,
+                      darkMode &&
+                        styles.formTitleDark,
+                    ]}
+                  >
                     {editingGoal
                       ? 'Edit Goal'
                       : 'New Goal'}
                   </Text>
 
                   <Pressable
-                    style={
-                      styles.closeButton
-                    }
+                    style={[
+                      styles.closeButton,
+                      darkMode &&
+                        styles.closeButtonDark,
+                    ]}
                     onPress={closeForm}
                   >
                     <Text
-                      style={
-                        styles.closeText
-                      }
+                      style={[
+                        styles.closeText,
+                        darkMode &&
+                          styles.closeTextDark,
+                      ]}
                     >
                       ×
                     </Text>
@@ -1187,7 +1428,13 @@ async function saveProgress() {
 
                 {/* TITLE */}
 
-                <Text style={styles.label}>
+                <Text
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
+                >
                   Goal Title
                 </Text>
 
@@ -1195,13 +1442,27 @@ async function saveProgress() {
                   value={title}
                   onChangeText={setTitle}
                   placeholder="e.g. Get Stronger"
-                  placeholderTextColor="#999"
-                  style={styles.input}
+                  placeholderTextColor={
+                    darkMode
+                      ? '#9CA3AF'
+                      : '#999'
+                  }
+                  style={[
+                    styles.input,
+                    darkMode &&
+                      styles.inputDark,
+                  ]}
                 />
 
                 {/* DESCRIPTION */}
 
-                <Text style={styles.label}>
+                <Text
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
+                >
                   Description (Optional)
                 </Text>
 
@@ -1209,10 +1470,16 @@ async function saveProgress() {
                   value={description}
                   onChangeText={setDescription}
                   placeholder="e.g. I work out because I want to be stronger and healthier."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={
+                    darkMode
+                      ? '#9CA3AF'
+                      : '#999'
+                  }
                   style={[
                     styles.input,
                     styles.descriptionInput,
+                    darkMode &&
+                      styles.inputDark,
                   ]}
                   multiline
                   textAlignVertical="top"
@@ -1220,7 +1487,13 @@ async function saveProgress() {
 
                 {/* CATEGORY */}
 
-                <Text style={styles.label}>
+                <Text
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
+                >
                   Category
                 </Text>
 
@@ -1234,8 +1507,13 @@ async function saveProgress() {
                       key={item}
                       style={[
                         styles.categoryButton,
+                        darkMode &&
+                          styles.categoryButtonDark,
                         category === item &&
                           styles.categoryButtonActive,
+                        category === item &&
+                          darkMode &&
+                          styles.categoryButtonActiveDark,
                       ]}
                       onPress={() =>
                         setCategory(item)
@@ -1244,8 +1522,13 @@ async function saveProgress() {
                       <Text
                         style={[
                           styles.categoryText,
+                          darkMode &&
+                            styles.categoryTextDark,
                           category === item &&
                             styles.categoryTextActive,
+                          category === item &&
+                            darkMode &&
+                            styles.categoryTextActiveDark,
                         ]}
                       >
                         {item}
@@ -1256,12 +1539,22 @@ async function saveProgress() {
 
                 {/* TARGET DATE */}
 
-                <Text style={styles.label}>
+                <Text
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
+                >
                   Target Date
                 </Text>
 
                 <Pressable
-                  style={styles.dateInput}
+                  style={[
+                    styles.dateInput,
+                    darkMode &&
+                      styles.dateInputDark,
+                  ]}
                   onPress={
                     openFormDatePicker
                   }
@@ -1269,8 +1562,13 @@ async function saveProgress() {
                   <Text
                     style={[
                       styles.dateInputText,
+                      darkMode &&
+                        styles.dateInputTextDark,
                       !targetDate &&
                         styles.placeholderText,
+                      !targetDate &&
+                        darkMode &&
+                        styles.placeholderTextDark,
                     ]}
                   >
                     {targetDate
@@ -1281,9 +1579,11 @@ async function saveProgress() {
                   </Text>
 
                   <Text
-                    style={
-                      styles.calendarIcon
-                    }
+                    style={[
+                      styles.calendarIcon,
+                      darkMode &&
+                        styles.calendarIconDark,
+                    ]}
                   >
                     ▣
                   </Text>
@@ -1291,7 +1591,13 @@ async function saveProgress() {
 
                 {/* STARTING PROGRESS */}
 
-                <Text style={styles.label}>
+                <Text
+                  style={[
+                    styles.label,
+                    darkMode &&
+                      styles.labelDark,
+                  ]}
+                >
                   Starting Progress:{' '}
                   {progress}%
                 </Text>
@@ -1307,9 +1613,15 @@ async function saveProgress() {
                         key={value}
                         style={[
                           styles.progressButton,
+                          darkMode &&
+                            styles.progressButtonDark,
                           progress === value &&
                             customProgress === '' &&
                             styles.progressButtonActive,
+                          progress === value &&
+                            customProgress === '' &&
+                            darkMode &&
+                            styles.progressButtonActiveDark,
                         ]}
                         onPress={() => {
                           setProgress(
@@ -1323,11 +1635,17 @@ async function saveProgress() {
                         <Text
                           style={[
                             styles.progressButtonText,
+                            darkMode &&
+                              styles.progressButtonTextDark,
                             progress ===
                               value &&
                               customProgress ===
                                 '' &&
                               styles.progressButtonTextActive,
+                            progress === value &&
+                              customProgress === '' &&
+                              darkMode &&
+                              styles.progressButtonTextActiveDark,
                           ]}
                         >
                           {value}%
@@ -1343,9 +1661,11 @@ async function saveProgress() {
                   }
                 >
                   <Text
-                    style={
-                      styles.customProgressLabel
-                    }
+                    style={[
+                      styles.customProgressLabel,
+                      darkMode &&
+                        styles.customProgressLabelDark,
+                    ]}
                   >
                     Custom:
                   </Text>
@@ -1356,18 +1676,26 @@ async function saveProgress() {
                       handleStartingProgressInput
                     }
                     placeholder="e.g. 10"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={
+                      darkMode
+                        ? '#9CA3AF'
+                        : '#999'
+                    }
                     keyboardType="numeric"
                     maxLength={3}
-                    style={
-                      styles.customProgressInput
-                    }
+                    style={[
+                      styles.customProgressInput,
+                      darkMode &&
+                        styles.customProgressInputDark,
+                    ]}
                   />
 
                   <Text
-                    style={
-                      styles.percentSymbol
-                    }
+                    style={[
+                      styles.percentSymbol,
+                      darkMode &&
+                        styles.percentSymbolDark,
+                    ]}
                   >
                     %
                   </Text>
@@ -1377,15 +1705,19 @@ async function saveProgress() {
 
                 <View style={styles.formButtons}>
                   <Pressable
-                    style={
-                      styles.cancelButton
-                    }
+                    style={[
+                      styles.cancelButton,
+                      darkMode &&
+                        styles.cancelButtonDark,
+                    ]}
                     onPress={closeForm}
                   >
                     <Text
-                      style={
-                        styles.cancelButtonText
-                      }
+                      style={[
+                        styles.cancelButtonText,
+                        darkMode &&
+                          styles.cancelButtonTextDark,
+                      ]}
                     >
                       Cancel
                     </Text>
@@ -1397,6 +1729,8 @@ async function saveProgress() {
                       (!title.trim() ||
                         !targetDate) &&
                         styles.saveButtonDisabled,
+                      darkMode &&
+                        styles.saveButtonDark,
                     ]}
                     onPress={saveGoal}
                     disabled={
@@ -1405,9 +1739,11 @@ async function saveProgress() {
                     }
                   >
                     <Text
-                      style={
-                        styles.saveButtonText
-                      }
+                      style={[
+                        styles.saveButtonText,
+                        darkMode &&
+                          styles.saveButtonTextDark,
+                      ]}
                     >
                       {editingGoal
                         ? 'Save Changes'
@@ -1433,23 +1769,39 @@ async function saveProgress() {
       >
         <View style={styles.modalOverlay}>
           <View
-            style={styles.progressModal}
+            style={[
+              styles.progressModal,
+              darkMode &&
+                styles.progressModalDark,
+            ]}
           >
             <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>
+              <Text
+                style={[
+                  styles.formTitle,
+                  darkMode &&
+                    styles.formTitleDark,
+                ]}
+              >
                 Update Progress
               </Text>
 
               <Pressable
-                style={
-                  styles.closeButton
-                }
+                style={[
+                  styles.closeButton,
+                  darkMode &&
+                    styles.closeButtonDark,
+                ]}
                 onPress={() =>
                   setProgressVisible(false)
                 }
               >
                 <Text
-                  style={styles.closeText}
+                  style={[
+                    styles.closeText,
+                    darkMode &&
+                      styles.closeTextDark,
+                  ]}
                 >
                   ×
                 </Text>
@@ -1457,9 +1809,11 @@ async function saveProgress() {
             </View>
 
             <Text
-              style={
-                styles.progressGoalTitle
-              }
+              style={[
+                styles.progressGoalTitle,
+                darkMode &&
+                  styles.progressGoalTitleDark,
+              ]}
             >
               {progressGoal?.title}
             </Text>
@@ -1481,11 +1835,17 @@ async function saveProgress() {
                     key={value}
                     style={[
                       styles.progressChoice,
+                      darkMode &&
+                        styles.progressChoiceDark,
                       newProgress ===
                         value &&
                         customNewProgress ===
                           '' &&
                         styles.progressChoiceActive,
+                      newProgress === value &&
+                        customNewProgress === '' &&
+                        darkMode &&
+                        styles.progressChoiceActiveDark,
                     ]}
                     onPress={() => {
                       setNewProgress(
@@ -1499,11 +1859,17 @@ async function saveProgress() {
                     <Text
                       style={[
                         styles.progressChoiceText,
+                        darkMode &&
+                          styles.progressChoiceTextDark,
                         newProgress ===
                           value &&
                           customNewProgress ===
                             '' &&
                           styles.progressChoiceTextActive,
+                        newProgress === value &&
+                          customNewProgress === '' &&
+                          darkMode &&
+                          styles.progressChoiceTextActiveDark,
                       ]}
                     >
                       {value}%
@@ -1519,9 +1885,11 @@ async function saveProgress() {
               }
             >
               <Text
-                style={
-                  styles.customProgressLabel
-                }
+                style={[
+                  styles.customProgressLabel,
+                  darkMode &&
+                    styles.customProgressLabelDark,
+                ]}
               >
                 Custom:
               </Text>
@@ -1532,18 +1900,26 @@ async function saveProgress() {
                   handleUpdatedProgressInput
                 }
                 placeholder="e.g. 10"
-                placeholderTextColor="#999"
+                placeholderTextColor={
+                  darkMode
+                    ? '#9CA3AF'
+                    : '#999'
+                }
                 keyboardType="numeric"
                 maxLength={3}
-                style={
-                  styles.customProgressInput
-                }
+                style={[
+                  styles.customProgressInput,
+                  darkMode &&
+                    styles.customProgressInputDark,
+                ]}
               />
 
               <Text
-                style={
-                  styles.percentSymbol
-                }
+                style={[
+                  styles.percentSymbol,
+                  darkMode &&
+                    styles.percentSymbolDark,
+                ]}
               >
                 %
               </Text>
@@ -1551,28 +1927,40 @@ async function saveProgress() {
 
             <View style={styles.formButtons}>
               <Pressable
-                style={styles.cancelButton}
+                style={[
+                  styles.cancelButton,
+                  darkMode &&
+                    styles.cancelButtonDark,
+                ]}
                 onPress={() =>
                   setProgressVisible(false)
                 }
               >
                 <Text
-                  style={
-                    styles.cancelButtonText
-                  }
+                  style={[
+                    styles.cancelButtonText,
+                    darkMode &&
+                      styles.cancelButtonTextDark,
+                  ]}
                 >
                   Cancel
                 </Text>
               </Pressable>
 
               <Pressable
-                style={styles.saveButton}
+                style={[
+                  styles.saveButton,
+                  darkMode &&
+                    styles.saveButtonDark,
+                ]}
                 onPress={saveProgress}
               >
                 <Text
-                  style={
-                    styles.saveButtonText
-                  }
+                  style={[
+                    styles.saveButtonText,
+                    darkMode &&
+                      styles.saveButtonTextDark,
+                  ]}
                 >
                   Save Progress
                 </Text>
@@ -1599,7 +1987,11 @@ async function saveProgress() {
           }
         >
           <Pressable
-            style={styles.calendarCard}
+            style={[
+              styles.calendarCard,
+              darkMode &&
+                styles.calendarCardDark,
+            ]}
             onPress={(event) =>
               event.stopPropagation()
             }
@@ -1613,14 +2005,22 @@ async function saveProgress() {
                 }
               >
                 <Text
-                  style={styles.monthArrow}
+                  style={[
+                    styles.monthArrow,
+                    darkMode &&
+                      styles.monthArrowDark,
+                  ]}
                 >
                   ‹
                 </Text>
               </Pressable>
 
               <Text
-                style={styles.monthTitle}
+                style={[
+                  styles.monthTitle,
+                  darkMode &&
+                    styles.monthTitleDark,
+                ]}
               >
                 {MONTHS[calendarMonth]}{' '}
                 {calendarYear}
@@ -1630,7 +2030,11 @@ async function saveProgress() {
                 onPress={goToNextMonth}
               >
                 <Text
-                  style={styles.monthArrow}
+                  style={[
+                    styles.monthArrow,
+                    darkMode &&
+                      styles.monthArrowDark,
+                  ]}
                 >
                   ›
                 </Text>
@@ -1641,7 +2045,11 @@ async function saveProgress() {
               {WEEKDAYS.map((day) => (
                 <Text
                   key={day}
-                  style={styles.weekText}
+                  style={[
+                    styles.weekText,
+                    darkMode &&
+                      styles.weekTextDark,
+                  ]}
                 >
                   {day}
                 </Text>
@@ -1705,6 +2113,8 @@ async function saveProgress() {
                       <Text
                         style={[
                           styles.dayText,
+                          darkMode &&
+                            styles.dayTextDark,
                           isSelected &&
                             styles.selectedDayText,
                         ]}
@@ -1724,14 +2134,18 @@ async function saveProgress() {
                 onPress={
                   clearTargetDate
                 }
-                style={
-                  styles.clearCalendarButton
-                }
+                style={[
+                  styles.clearCalendarButton,
+                  darkMode &&
+                    styles.clearCalendarButtonDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.clearDateButtonText
-                  }
+                  style={[
+                    styles.clearDateButtonText,
+                    darkMode &&
+                      styles.clearDateButtonTextDark,
+                  ]}
                 >
                   Clear
                 </Text>
@@ -1743,14 +2157,18 @@ async function saveProgress() {
                     false,
                   )
                 }
-                style={
-                  styles.doneDateButton
-                }
+                style={[
+                  styles.doneDateButton,
+                  darkMode &&
+                    styles.doneDateButtonDark,
+                ]}
               >
                 <Text
-                  style={
-                    styles.doneDateButtonText
-                  }
+                  style={[
+                    styles.doneDateButtonText,
+                    darkMode &&
+                      styles.doneDateButtonTextDark,
+                  ]}
                 >
                   Done
                 </Text>
@@ -1778,18 +2196,27 @@ function FilterButton({
   active: boolean;
   onPress: () => void;
 }) {
+  const { darkMode } = useTheme();
+
   return (
     <Pressable
       style={[
         styles.filterButton,
+        darkMode &&
+          styles.filterButtonDark,
         active &&
           styles.filterButtonActive,
+        active &&
+          darkMode &&
+          styles.filterButtonActiveDark,
       ]}
       onPress={onPress}
     >
       <Text
         style={[
           styles.filterLabel,
+          darkMode &&
+            styles.filterLabelDark,
           active &&
             styles.filterLabelActive,
         ]}
@@ -1800,6 +2227,8 @@ function FilterButton({
       <Text
         style={[
           styles.filterCount,
+          darkMode &&
+            styles.filterCountDark,
           active &&
             styles.filterCountActive,
         ]}
@@ -1823,6 +2252,8 @@ function GoalCard({
   onMenu: () => void;
   onProgress: () => void;
 }) {
+  const { darkMode } = useTheme();
+
   const statusStyle =
     goal.status === 'Active'
       ? styles.activeBadge
@@ -1830,19 +2261,40 @@ function GoalCard({
         ? styles.pausedBadge
         : styles.completedBadge;
 
+  const darkStatusStyle =
+    goal.status === 'Active'
+      ? styles.activeBadgeDark
+      : goal.status === 'Paused'
+        ? styles.pausedBadgeDark
+        : styles.completedBadgeDark;
+
   return (
-    <View style={styles.goalCard}>
+    <View
+      style={[
+        styles.goalCard,
+        darkMode &&
+          styles.goalCardDark,
+      ]}
+    >
       <View style={styles.goalTopRow}>
         <View style={styles.goalTitleArea}>
           <Text
-            style={styles.goalTitle}
+            style={[
+              styles.goalTitle,
+              darkMode &&
+                styles.goalTitleDark,
+            ]}
             numberOfLines={2}
           >
             {goal.title}
           </Text>
 
           <Text
-            style={styles.goalDescription}
+            style={[
+              styles.goalDescription,
+              darkMode &&
+                styles.goalDescriptionDark,
+            ]}
             numberOfLines={2}
           >
             {goal.description ||
@@ -1855,10 +2307,16 @@ function GoalCard({
             style={[
               styles.statusBadge,
               statusStyle,
+              darkMode &&
+                darkStatusStyle,
             ]}
           >
             <Text
-              style={styles.statusText}
+              style={[
+                styles.statusText,
+                darkMode &&
+                  styles.statusTextDark,
+              ]}
             >
               {goal.status}
             </Text>
@@ -1869,7 +2327,11 @@ function GoalCard({
             onPress={onMenu}
           >
             <Text
-              style={styles.moreText}
+              style={[
+                styles.moreText,
+                darkMode &&
+                  styles.moreTextDark,
+              ]}
             >
               ⋮
             </Text>
@@ -1877,9 +2339,19 @@ function GoalCard({
         </View>
       </View>
 
-      <View style={styles.categoryPill}>
+      <View
+        style={[
+          styles.categoryPill,
+          darkMode &&
+            styles.categoryPillDark,
+        ]}
+      >
         <Text
-          style={styles.categoryPillText}
+          style={[
+            styles.categoryPillText,
+            darkMode &&
+              styles.categoryPillTextDark,
+          ]}
         >
           {goal.category}
         </Text>
@@ -1889,20 +2361,32 @@ function GoalCard({
         style={styles.progressHeader}
       >
         <Text
-          style={styles.progressLabel}
+          style={[
+            styles.progressLabel,
+            darkMode &&
+              styles.progressLabelDark,
+          ]}
         >
           Progress
         </Text>
 
         <Text
-          style={styles.progressPercent}
+          style={[
+            styles.progressPercent,
+            darkMode &&
+              styles.progressPercentDark,
+          ]}
         >
           {goal.progress}%
         </Text>
       </View>
 
       <View
-        style={styles.progressTrack}
+        style={[
+          styles.progressTrack,
+          darkMode &&
+            styles.progressTrackDark,
+        ]}
       >
         <View
           style={[
@@ -1919,13 +2403,21 @@ function GoalCard({
       >
         <View>
           <Text
-            style={styles.targetLabel}
+            style={[
+              styles.targetLabel,
+              darkMode &&
+                styles.targetLabelDark,
+            ]}
           >
             Target date
           </Text>
 
           <Text
-            style={styles.targetDate}
+            style={[
+              styles.targetDate,
+              darkMode &&
+                styles.targetDateDark,
+            ]}
           >
             {displayDate(
               goal.targetDate,
@@ -1936,29 +2428,37 @@ function GoalCard({
         {goal.status !==
         'Completed' ? (
           <Pressable
-            style={
-              styles.progressAction
-            }
+            style={[
+              styles.progressAction,
+              darkMode &&
+                styles.progressActionDark,
+            ]}
             onPress={onProgress}
           >
             <Text
-              style={
-                styles.progressActionText
-              }
+              style={[
+                styles.progressActionText,
+                darkMode &&
+                  styles.progressActionTextDark,
+              ]}
             >
               Update
             </Text>
           </Pressable>
         ) : (
           <View
-            style={
-              styles.completedCheck
-            }
+            style={[
+              styles.completedCheck,
+              darkMode &&
+                styles.completedCheckDark,
+            ]}
           >
             <Text
-              style={
-                styles.completedCheckText
-              }
+              style={[
+                styles.completedCheckText,
+                darkMode &&
+                  styles.completedCheckTextDark,
+              ]}
             >
               ✓ Done
             </Text>
@@ -1979,9 +2479,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
+  safeAreaDark: {
+    backgroundColor: '#111827',
+  },
+
   screen: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+
+  screenDark: {
+    backgroundColor: '#111827',
   },
 
   container: {
@@ -1994,6 +2502,7 @@ const styles = StyleSheet.create({
     minHeight: 62,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: 24,
   },
 
   backButton: {
@@ -2005,11 +2514,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  backButtonDark: {
+    backgroundColor: '#193746',
+  },
+
   backText: {
     fontSize: 34,
     lineHeight: 36,
     color: '#222222',
     marginTop: -4,
+  },
+
+  backTextDark: {
+    color: '#7CC7E7',
   },
 
   headerTitleArea: {
@@ -2023,10 +2540,18 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
 
+  headerTitleDark: {
+    color: '#F9FAFB',
+  },
+
   headerSubtitle: {
     fontSize: 11,
     color: '#777777',
     marginTop: 2,
+  },
+
+  headerSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   headerActions: {
@@ -2043,9 +2568,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  iconButtonDark: {
+    backgroundColor: '#193746',
+  },
+
   iconText: {
     fontSize: 23,
     color: '#222222',
+  },
+
+  iconTextDark: {
+    color: '#7CC7E7',
   },
 
   searchContainer: {
@@ -2061,10 +2594,19 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
+  searchContainerDark: {
+    backgroundColor: '#1F2937',
+    borderColor: '#374151',
+  },
+
   searchInput: {
     flex: 1,
     fontSize: 15,
     color: '#222222',
+  },
+
+  searchInputDark: {
+    color: '#F9FAFB',
   },
 
   clearSearch: {
@@ -2073,8 +2615,12 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
 
+  clearSearchDark: {
+    color: '#9CA3AF',
+  },
+
   searchDismissLayer: {
-    position:'absolute', 
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
@@ -2100,10 +2646,18 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
 
+  pageTitleDark: {
+    color: '#F9FAFB',
+  },
+
   summaryText: {
     marginTop: 8,
     fontSize: 12,
     color: '#666666',
+  },
+
+  summaryTextDark: {
+    color: '#9CA3AF',
   },
 
   newGoalButton: {
@@ -2115,9 +2669,17 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
 
+  newGoalButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   plusText: {
     fontSize: 20,
     color: '#222222',
+  },
+
+  plusTextDark: {
+    color: '#BDE7F8',
   },
 
   newGoalText: {
@@ -2125,6 +2687,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#222222',
     marginLeft: 3,
+  },
+
+  newGoalTextDark: {
+    color: '#BDE7F8',
   },
 
   dateView: {
@@ -2138,11 +2704,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
+  dateViewDark: {
+    backgroundColor: '#193746',
+  },
+
   dateViewLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: '#6B8CA4',
     letterSpacing: 1,
+  },
+
+  dateViewLabelDark: {
+    color: '#9CCFE5',
   },
 
   dateViewDate: {
@@ -2152,6 +2726,10 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
+  dateViewDateDark: {
+    color: '#7CC7E7',
+  },
+
   clearDateButton: {
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
@@ -2159,10 +2737,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
+  clearDateButtonDark: {
+    backgroundColor: '#1F2937',
+  },
+
   clearDateText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#2876A8',
+  },
+
+  clearDateTextDark: {
+    color: '#7CC7E7',
   },
 
   dateHeading: {
@@ -2178,10 +2764,18 @@ const styles = StyleSheet.create({
     color: '#222222',
   },
 
+  dateHeadingTitleDark: {
+    color: '#F9FAFB',
+  },
+
   dateHeadingSubtitle: {
     fontSize: 12,
     color: '#777777',
     marginTop: 3,
+  },
+
+  dateHeadingSubtitleDark: {
+    color: '#9CA3AF',
   },
 
   dateCount: {
@@ -2193,10 +2787,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  dateCountDark: {
+    backgroundColor: '#193746',
+  },
+
   dateCountText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#2876A8',
+  },
+
+  dateCountTextDark: {
+    color: '#7CC7E7',
   },
 
   filterGrid: {
@@ -2219,15 +2821,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
 
+  filterButtonDark: {
+    backgroundColor: '#1F2937',
+    borderColor: '#374151',
+  },
+
   filterButtonActive: {
     backgroundColor: '#E5F3FF',
     borderColor: '#BBDDF5',
+  },
+
+  filterButtonActiveDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
   },
 
   filterLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: '#555555',
+  },
+
+  filterLabelDark: {
+    color: '#D1D5DB',
   },
 
   filterLabelActive: {
@@ -2238,6 +2854,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#777777',
+  },
+
+  filterCountDark: {
+    color: '#9CA3AF',
   },
 
   filterCountActive: {
@@ -2256,6 +2876,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
+  goalCardDark: {
+    backgroundColor: '#1F2937',
+    borderColor: '#374151',
+  },
+
   goalTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2272,10 +2897,18 @@ const styles = StyleSheet.create({
     color: '#171717',
   },
 
+  goalTitleDark: {
+    color: '#F9FAFB',
+  },
+
   goalDescription: {
     fontSize: 12,
     color: '#777777',
     marginTop: 4,
+  },
+
+  goalDescriptionDark: {
+    color: '#9CA3AF',
   },
 
   categoryPill: {
@@ -2287,10 +2920,18 @@ const styles = StyleSheet.create({
     marginTop: 9,
   },
 
+  categoryPillDark: {
+    backgroundColor: '#193746',
+  },
+
   categoryPillText: {
     fontSize: 10,
     fontWeight: '600',
     color: '#5C7890',
+  },
+
+  categoryPillTextDark: {
+    color: '#9CCFE5',
   },
 
   goalRight: {
@@ -2309,18 +2950,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#CFF7D2',
   },
 
+  activeBadgeDark: {
+    backgroundColor: '#254C36',
+  },
+
   pausedBadge: {
     backgroundColor: '#E2E2E2',
+  },
+
+  pausedBadgeDark: {
+    backgroundColor: '#374151',
   },
 
   completedBadge: {
     backgroundColor: '#BFE4FF',
   },
 
+  completedBadgeDark: {
+    backgroundColor: '#24566B',
+  },
+
   statusText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#555555',
+  },
+
+  statusTextDark: {
+    color: '#D1D5DB',
   },
 
   moreButton: {
@@ -2336,6 +2993,10 @@ const styles = StyleSheet.create({
     marginTop: -5,
   },
 
+  moreTextDark: {
+    color: '#D1D5DB',
+  },
+
   progressHeader: {
     marginTop: 16,
     flexDirection: 'row',
@@ -2347,10 +3008,18 @@ const styles = StyleSheet.create({
     color: '#555555',
   },
 
+  progressLabelDark: {
+    color: '#9CA3AF',
+  },
+
   progressPercent: {
     fontSize: 12,
     fontWeight: '600',
     color: '#444444',
+  },
+
+  progressPercentDark: {
+    color: '#D1D5DB',
   },
 
   progressTrack: {
@@ -2359,6 +3028,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginTop: 7,
     overflow: 'hidden',
+  },
+
+  progressTrackDark: {
+    backgroundColor: '#374151',
   },
 
   progressFill: {
@@ -2379,11 +3052,19 @@ const styles = StyleSheet.create({
     color: '#888888',
   },
 
+  targetLabelDark: {
+    color: '#9CA3AF',
+  },
+
   targetDate: {
     fontSize: 12,
     fontWeight: '600',
     color: '#444444',
     marginTop: 2,
+  },
+
+  targetDateDark: {
+    color: '#E5E7EB',
   },
 
   progressAction: {
@@ -2393,10 +3074,18 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
 
+  progressActionDark: {
+    backgroundColor: '#193746',
+  },
+
   progressActionText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#377FA9',
+  },
+
+  progressActionTextDark: {
+    color: '#7CC7E7',
   },
 
   completedCheck: {
@@ -2406,10 +3095,18 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
 
+  completedCheckDark: {
+    backgroundColor: '#254C36',
+  },
+
   completedCheckText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#4C8B55',
+  },
+
+  completedCheckTextDark: {
+    color: '#9AD6A3',
   },
 
   emptyState: {
@@ -2423,12 +3120,20 @@ const styles = StyleSheet.create({
     color: '#9ED6FF',
   },
 
+  emptyIconDark: {
+    color: '#7CC7E7',
+  },
+
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#222222',
     marginTop: 12,
     textAlign: 'center',
+  },
+
+  emptyTitleDark: {
+    color: '#F9FAFB',
   },
 
   emptySubtitle: {
@@ -2439,6 +3144,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  emptySubtitleDark: {
+    color: '#9CA3AF',
+  },
+
   emptyButton: {
     marginTop: 18,
     backgroundColor: '#DCEEFF',
@@ -2447,10 +3156,18 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
 
+  emptyButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   emptyButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#2876A8',
+  },
+
+  emptyButtonTextDark: {
+    color: '#BDE7F8',
   },
 
   // MENU
@@ -2471,11 +3188,19 @@ const styles = StyleSheet.create({
     padding: 18,
   },
 
+  menuCardDark: {
+    backgroundColor: '#1F2937',
+  },
+
   menuTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#222222',
     marginBottom: 8,
+  },
+
+  menuTitleDark: {
+    color: '#F9FAFB',
   },
 
   menuItem: {
@@ -2484,14 +3209,26 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EEEEEE',
   },
 
+  menuItemDark: {
+    borderBottomColor: '#374151',
+  },
+
   menuItemText: {
     fontSize: 14,
     color: '#333333',
   },
 
+  menuItemTextDark: {
+    color: '#E5E7EB',
+  },
+
   deleteText: {
     fontSize: 14,
     color: '#D95353',
+  },
+
+  deleteTextDark: {
+    color: '#F08080',
   },
 
   cancelMenuButton: {
@@ -2502,10 +3239,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
+  cancelMenuButtonDark: {
+    backgroundColor: '#374151',
+  },
+
   cancelMenuText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#555555',
+  },
+
+  cancelMenuTextDark: {
+    color: '#D1D5DB',
   },
 
   // MODALS
@@ -2531,10 +3276,18 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 
+  formCardDark: {
+    backgroundColor: '#1F2937',
+  },
+
   progressModal: {
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 20,
+  },
+
+  progressModalDark: {
+    backgroundColor: '#1F2937',
   },
 
   formHeader: {
@@ -2550,6 +3303,10 @@ const styles = StyleSheet.create({
     color: '#222222',
   },
 
+  formTitleDark: {
+    color: '#F9FAFB',
+  },
+
   closeButton: {
     width: 32,
     height: 32,
@@ -2559,10 +3316,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  closeButtonDark: {
+    backgroundColor: '#374151',
+  },
+
   closeText: {
     fontSize: 23,
     color: '#555555',
     marginTop: -2,
+  },
+
+  closeTextDark: {
+    color: '#D1D5DB',
   },
 
   label: {
@@ -2571,6 +3336,10 @@ const styles = StyleSheet.create({
     color: '#555555',
     marginBottom: 7,
     marginTop: 13,
+  },
+
+  labelDark: {
+    color: '#D1D5DB',
   },
 
   input: {
@@ -2582,6 +3351,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#222222',
     backgroundColor: '#FFFFFF',
+  },
+
+  inputDark: {
+    color: '#F9FAFB',
+    backgroundColor: '#111827',
+    borderColor: '#374151',
   },
 
   descriptionInput: {
@@ -2603,9 +3378,18 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
 
+  categoryButtonDark: {
+    borderColor: '#4B5563',
+  },
+
   categoryButtonActive: {
     backgroundColor: '#E2F3FF',
     borderColor: '#9FD0EF',
+  },
+
+  categoryButtonActiveDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
   },
 
   categoryText: {
@@ -2613,9 +3397,17 @@ const styles = StyleSheet.create({
     color: '#555555',
   },
 
+  categoryTextDark: {
+    color: '#D1D5DB',
+  },
+
   categoryTextActive: {
     color: '#2876A8',
     fontWeight: '600',
+  },
+
+  categoryTextActiveDark: {
+    color: '#7CC7E7',
   },
 
   dateInput: {
@@ -2629,18 +3421,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
+  dateInputDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+  },
+
   dateInputText: {
     fontSize: 13,
     color: '#333333',
+  },
+
+  dateInputTextDark: {
+    color: '#F9FAFB',
   },
 
   placeholderText: {
     color: '#999999',
   },
 
+  placeholderTextDark: {
+    color: '#9CA3AF',
+  },
+
   calendarIcon: {
     fontSize: 17,
     color: '#666666',
+  },
+
+  calendarIconDark: {
+    color: '#7CC7E7',
   },
 
   progressButtons: {
@@ -2658,9 +3467,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  progressButtonDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+  },
+
   progressButtonActive: {
     backgroundColor: '#E2F3FF',
     borderColor: '#9FD0EF',
+  },
+
+  progressButtonActiveDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
   },
 
   progressButtonText: {
@@ -2668,9 +3487,17 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
 
+  progressButtonTextDark: {
+    color: '#D1D5DB',
+  },
+
   progressButtonTextActive: {
     color: '#2876A8',
     fontWeight: '700',
+  },
+
+  progressButtonTextActiveDark: {
+    color: '#7CC7E7',
   },
 
   customProgressRow: {
@@ -2686,6 +3513,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
+  customProgressLabelDark: {
+    color: '#9CA3AF',
+  },
+
   customProgressInput: {
     width: 70,
     height: 38,
@@ -2698,10 +3529,20 @@ const styles = StyleSheet.create({
     color: '#222222',
   },
 
+  customProgressInputDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+    color: '#F9FAFB',
+  },
+
   percentSymbol: {
     fontSize: 13,
     color: '#555555',
     marginLeft: 5,
+  },
+
+  percentSymbolDark: {
+    color: '#D1D5DB',
   },
 
   formButtons: {
@@ -2720,10 +3561,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  cancelButtonDark: {
+    borderColor: '#4B5563',
+  },
+
   cancelButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#666666',
+  },
+
+  cancelButtonTextDark: {
+    color: '#D1D5DB',
   },
 
   saveButton: {
@@ -2733,6 +3582,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#B9E0FA',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  saveButtonDark: {
+    backgroundColor: '#24566B',
   },
 
   saveButtonDisabled: {
@@ -2745,11 +3598,19 @@ const styles = StyleSheet.create({
     color: '#2876A8',
   },
 
+  saveButtonTextDark: {
+    color: '#BDE7F8',
+  },
+
   progressGoalTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#444444',
     textAlign: 'center',
+  },
+
+  progressGoalTitleDark: {
+    color: '#E5E7EB',
   },
 
   bigProgress: {
@@ -2775,9 +3636,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  progressChoiceDark: {
+    backgroundColor: '#111827',
+    borderColor: '#374151',
+  },
+
   progressChoiceActive: {
     backgroundColor: '#E2F3FF',
     borderColor: '#9FD0EF',
+  },
+
+  progressChoiceActiveDark: {
+    backgroundColor: '#193746',
+    borderColor: '#24566B',
   },
 
   progressChoiceText: {
@@ -2785,9 +3656,17 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
 
+  progressChoiceTextDark: {
+    color: '#D1D5DB',
+  },
+
   progressChoiceTextActive: {
     color: '#2876A8',
     fontWeight: '700',
+  },
+
+  progressChoiceTextActiveDark: {
+    color: '#7CC7E7',
   },
 
   // CALENDAR
@@ -2796,6 +3675,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 20,
+  },
+
+  calendarCardDark: {
+    backgroundColor: '#1F2937',
   },
 
   calendarHeader: {
@@ -2810,10 +3693,18 @@ const styles = StyleSheet.create({
     color: '#222222',
   },
 
+  monthTitleDark: {
+    color: '#F9FAFB',
+  },
+
   monthArrow: {
     fontSize: 30,
     color: '#555555',
     paddingHorizontal: 10,
+  },
+
+  monthArrowDark: {
+    color: '#7CC7E7',
   },
 
   weekRow: {
@@ -2828,6 +3719,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#888888',
+  },
+
+  weekTextDark: {
+    color: '#9CA3AF',
   },
 
   calendarGrid: {
@@ -2846,6 +3741,10 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 13,
     color: '#333333',
+  },
+
+  dayTextDark: {
+    color: '#E5E7EB',
   },
 
   selectedDay: {
@@ -2874,10 +3773,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 
+  clearCalendarButtonDark: {
+    backgroundColor: 'transparent',
+  },
+
   clearDateButtonText: {
     fontSize: 13,
     color: '#777777',
     fontWeight: '600',
+  },
+
+  clearDateButtonTextDark: {
+    color: '#D1D5DB',
   },
 
   doneDateButton: {
@@ -2887,9 +3794,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 
+  doneDateButtonDark: {
+    backgroundColor: '#24566B',
+  },
+
   doneDateButtonText: {
     fontSize: 13,
     color: '#2876A8',
     fontWeight: '700',
+  },
+
+  doneDateButtonTextDark: {
+    color: '#BDE7F8',
   },
 });
